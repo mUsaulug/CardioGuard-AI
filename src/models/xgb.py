@@ -76,3 +76,16 @@ def train_xgb(
     val_proba, _ = predict_xgb(model, X_val)
     metrics = compute_binary_metrics(y_val, val_proba)
     return model, metrics
+
+
+def save_xgb(model: XGBClassifier, path: str | Path) -> None:
+    """Save XGBoost model to JSON."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    model.save_model(path)
+
+
+def load_xgb(path: str | Path) -> XGBClassifier:
+    """Load XGBoost model from JSON."""
+    model = XGBClassifier()
+    model.load_model(path)
+    return model
