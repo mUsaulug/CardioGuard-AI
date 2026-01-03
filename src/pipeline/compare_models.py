@@ -23,7 +23,7 @@ from torch.utils.data import DataLoader
 
 from src.config import get_default_config
 from src.data.loader import load_ptbxl_metadata
-from src.data.signals import SignalDataset
+from src.data.signals import SignalDataset, compute_channel_stats_streaming, normalize_with_stats
 from src.data.splits import get_standard_split
 from src.models.cnn import ECGCNN, ECGCNNConfig
 from src.models.xgb import load_xgb, predict_xgb
@@ -154,12 +154,15 @@ def build_loader(
     indices: np.ndarray,
     config,
     batch_size: int,
+    transform: Optional[callable] = None,
 ) -> DataLoader:
     dataset = SignalDataset(
         df=df.loc[indices],
         base_path=config.data_root,
         filename_column=config.filename_column,
         label_column="label_mi_norm",
+        transform=transform,
+        expected_channels=12,
     )
     return DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
@@ -292,16 +295,34 @@ def main() -> None:
     df = df[df["label_mi_norm"] != -1].copy()
     
     # Get train/val/test split
-    _, val_indices, test_indices = get_standard_split(df)
+    train_indices, val_indices, test_indices = get_standard_split(df)
     
     # Intersect valid labels with splits
+    valid_train_indices = np.intersect1d(train_indices, df.index)
     valid_val_indices = np.intersect1d(val_indices, df.index)
     valid_test_indices = np.intersect1d(test_indices, df.index)
+    print(f"Train Set Size: {len(valid_train_indices)}")
     print(f"Validation Set Size: {len(valid_val_indices)}")
     print(f"Test Set Size: {len(valid_test_indices)}")
 
-    val_loader = build_loader(df, valid_val_indices, config, args.batch_size)
-    test_loader = build_loader(df, valid_test_indices, config, args.batch_size)
+    stats_batch_size = 128
+    mean, std = compute_channel_stats_streaming(
+        df.loc[valid_train_indices],
+        base_path=config.data_root,
+        filename_column=config.filename_column,
+        batch_size=stats_batch_size,
+        progress=False,
+        expected_channels=12,
+    )
+
+    def normalize(signal: np.ndarray) -> np.ndarray:
+        mean_flat = mean.reshape(-1)
+        std_flat = std.reshape(-1)
+        normalized = normalize_with_stats(signal, mean_flat, std_flat)
+        return np.transpose(normalized, (1, 0))
+
+    val_loader = build_loader(df, valid_val_indices, config, args.batch_size, transform=normalize)
+    test_loader = build_loader(df, valid_test_indices, config, args.batch_size, transform=normalize)
     
     # 2. CNN Inference
     print("Loading CNN model...")
@@ -354,8 +375,9 @@ def main() -> None:
 
     # 4. Ensemble with Optimized Alpha (validation)
     print("\nOptimizing ensemble weight α (validation)...")
+    metric_name = "roc_auc"
     best_alpha, best_score, alpha_scores = optimize_ensemble_weight(
-        y_val, cnn_probs_val, xgb_probs_val, metric="roc_auc"
+        y_val, cnn_probs_val, xgb_probs_val, metric=metric_name
     )
     print(f"Best α = {best_alpha:.2f} (AUC = {best_score:.4f})")
     config_path = _save_ensemble_config(
