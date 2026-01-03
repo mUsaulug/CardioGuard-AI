@@ -1,4 +1,7 @@
-"""Train and evaluate an XGBoost classifier on saved CNN features."""
+"""Train and evaluate an XGBoost classifier on saved CNN features.
+
+Note: XGBoost requires labels to be present in the saved .npz features.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +20,17 @@ def load_features(path: str | Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray 
 
     data = np.load(path)
     features = data["features"]
+    if "labels" not in data:
+        raise ValueError(
+            f"Missing labels in features file: {path}. "
+            "XGBoost training requires labels in the .npz archive."
+        )
     labels = data["labels"]
+    if labels.size == 0:
+        raise ValueError(
+            f"Empty labels in features file: {path}. "
+            "XGBoost training requires non-empty labels."
+        )
     ids = data["ids"] if "ids" in data else None
     return features, labels, ids
 
