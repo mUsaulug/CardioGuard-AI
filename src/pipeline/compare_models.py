@@ -58,8 +58,18 @@ def write_outputs(rows: List[Dict[str, object]], columns: List[str], output_dir:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare CNN and XGBoost test metrics")
-    parser.add_argument("--cnn", type=Path, required=True, help="Path to CNN metrics.json file")
-    parser.add_argument("--xgb", type=Path, required=True, help="Path to XGBoost metrics.json file")
+    parser.add_argument(
+        "--cnn",
+        type=Path,
+        default=Path("logs/metrics.json"),
+        help="Path to CNN metrics.json file",
+    )
+    parser.add_argument(
+        "--xgb",
+        type=Path,
+        default=Path("logs/xgb/metrics.json"),
+        help="Path to XGBoost metrics.json file",
+    )
     parser.add_argument(
         "--out",
         type=Path,
