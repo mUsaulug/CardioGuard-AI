@@ -149,6 +149,7 @@ def build_datasets(
         batch_size=stats_batch_size,
         progress=False,
         cache_dir=cache_dir,
+        expected_channels=12,
     )
 
     def normalize(signal: np.ndarray) -> np.ndarray:
@@ -162,6 +163,7 @@ def build_datasets(
             label_column=label_column,
             transform=normalize,
             cache_dir=cache_dir,
+            expected_channels=12,
         ),
         "val": SignalDataset(
             val_df,
@@ -170,6 +172,7 @@ def build_datasets(
             label_column=label_column,
             transform=normalize,
             cache_dir=cache_dir,
+            expected_channels=12,
         ),
         "test": SignalDataset(
             test_df,
@@ -178,6 +181,7 @@ def build_datasets(
             label_column=label_column,
             transform=normalize,
             cache_dir=cache_dir,
+            expected_channels=12,
         ),
     }
 
