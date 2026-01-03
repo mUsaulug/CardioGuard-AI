@@ -289,11 +289,11 @@ def main() -> None:
     
     # 6. Output
     print("\n=== Model Comparison Report ===")
-    print(results_df.to_markdown(index=False, floatfmt=".4f"))
+    print(results_df.to_string(index=False))
     
     args.output_dir.mkdir(parents=True, exist_ok=True)
     report_path = args.output_dir / "comparison_report.md"
-    results_df.to_markdown(report_path, index=False, floatfmt=".4f")
+    _write_markdown_table(results_df, report_path)
     print(f"\nReport saved to {report_path}")
     
     # Save CSV too
