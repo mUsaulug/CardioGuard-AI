@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 
 from src.config import PTBXLConfig, get_default_config
 from src.data.signals import SignalDataset, compute_channel_stats_streaming, normalize_with_stats
-from src.models.cnn import ECGCNN, ECGCNNConfig
+from src.models.cnn import BinaryHead, ECGBackbone, ECGCNNConfig
 from src.models.trainer import train_one_epoch, validate
 from src.pipeline.data_pipeline import prepare_splits
 from src.pipeline.data_pipeline import ECGDatasetTorch
@@ -191,7 +191,9 @@ def main() -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_config = ECGCNNConfig()
-    model = ECGCNN(model_config).to(device)
+    backbone = ECGBackbone(model_config)
+    head = BinaryHead(model_config.num_filters)
+    model = torch.nn.Sequential(backbone, head).to(device)
 
     metrics = train_and_evaluate(model, loaders, args.epochs, device)
 
