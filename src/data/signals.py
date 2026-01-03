@@ -160,6 +160,98 @@ def load_signals_batch(
     return signals_array, ecg_ids
 
 
+def build_npz_cache(
+    df: pd.DataFrame,
+    base_path: Union[str, Path],
+    cache_path: Union[str, Path],
+    filename_column: str = "filename_lr",
+    max_samples: Optional[int] = None,
+    progress: bool = True
+) -> Path:
+    """
+    Build a single NPZ cache file containing signals and ecg_ids.
+
+    Args:
+        df: DataFrame with signal file paths
+        base_path: Base path to PTB-XL data directory
+        cache_path: Output path for the npz file
+        filename_column: Column containing relative file paths
+        max_samples: Optional limit on number of samples to cache
+        progress: If True, print progress updates
+
+    Returns:
+        Path to the written cache file
+    """
+    signals, ecg_ids = load_signals_batch(
+        df,
+        base_path=base_path,
+        filename_column=filename_column,
+        max_samples=max_samples,
+        progress=progress
+    )
+    cache_path = Path(cache_path)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(cache_path, signals=signals, ecg_ids=np.array(ecg_ids))
+    return cache_path
+
+
+def load_npz_cache(cache_path: Union[str, Path]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Load signals and ecg_ids from an NPZ cache.
+
+    Args:
+        cache_path: Path to npz cache created by build_npz_cache
+
+    Returns:
+        Tuple of (signals, ecg_ids)
+    """
+    cache_path = Path(cache_path)
+    data = np.load(cache_path, allow_pickle=False)
+    return data["signals"], data["ecg_ids"]
+
+
+class CachedSignalDataset:
+    """
+    Dataset backed by a prebuilt NPZ cache.
+
+    Example:
+        >>> signals, ecg_ids = load_npz_cache(cache_path)
+        >>> dataset = CachedSignalDataset(signals, ecg_ids, labels)
+    """
+
+    def __init__(
+        self,
+        signals: np.ndarray,
+        ecg_ids: np.ndarray,
+        labels: Optional[Dict[int, int]] = None,
+        transform: Optional[callable] = None
+    ):
+        """
+        Initialize the cached dataset.
+
+        Args:
+            signals: Array of shape (n_samples, n_timesteps, n_channels)
+            ecg_ids: Array of ecg_id values aligned with signals
+            labels: Optional mapping {ecg_id: label}
+            transform: Optional transform function applied to each signal
+        """
+        self.signals = signals
+        self.ecg_ids = ecg_ids
+        self.labels = labels or {}
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return len(self.ecg_ids)
+
+    def __getitem__(self, idx: int) -> Tuple[np.ndarray, Optional[int], int]:
+        signal = self.signals[idx]
+        ecg_id = int(self.ecg_ids[idx])
+        if self.transform is not None:
+            signal = self.transform(signal)
+        label = self.labels.get(ecg_id)
+        return signal, label, ecg_id
+
+
 class SignalDataset:
     """
     Lazy-loading dataset for ECG signals.
@@ -230,6 +322,14 @@ class SignalDataset:
 
         # Load signal (with optional cache)
         signal = None
+        if self.cache_dir is not None:
+            cache_path = self._cache_path(ecg_id, row[self.filename_column])
+            if cache_path.exists():
+                signal = np.load(cache_path)
+        if signal is None:
+            signal, _ = load_single_signal(row[self.filename_column], self.base_path)
+            if self.cache_dir is not None:
+                np.save(cache_path, signal)
         if self.use_cache and self.cache_dir is not None:
             cache_key = self._cache_key(ecg_id, row[self.filename_column])
             signal, _ = _load_cached_signal(self.cache_dir, cache_key)
@@ -254,6 +354,9 @@ class SignalDataset:
         for idx in range(len(self)):
             yield self[idx]
 
+    def _cache_path(self, ecg_id: int, filename: str) -> Path:
+        safe_name = filename.replace("/", "_")
+        return self.cache_dir / f"{ecg_id}_{safe_name}.npy"
     def _cache_key(self, ecg_id: int, filename: str) -> str:
         safe_name = _sanitize_cache_key(filename)
         return f"{ecg_id}_{safe_name}"
