@@ -13,8 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
 import pandas as pd
@@ -121,29 +120,6 @@ def _format_metrics(name: str, metrics: Dict[str, float]) -> Dict[str, object]:
     }
 
 
-def _write_markdown_table(results_df: pd.DataFrame, report_path: Path) -> None:
-    headers = list(results_df.columns)
-    rows = [headers]
-    for row in results_df.itertuples(index=False, name=None):
-        formatted = []
-        for value in row:
-            if isinstance(value, (float, np.floating)):
-                formatted.append(f"{float(value):.4f}")
-            elif value is None:
-                formatted.append("")
-            else:
-                formatted.append(str(value))
-        rows.append(formatted)
-
-    lines = [
-        f"| {' | '.join(rows[0])} |",
-        f"| {' | '.join(['---'] * len(rows[0]))} |",
-    ]
-    for row in rows[1:]:
-        lines.append(f"| {' | '.join(row)} |")
-    report_path.write_text("\n".join(lines), encoding="utf-8")
-
-
 def compare_from_metrics(
     cnn_metrics_path: Path,
     xgb_metrics_path: Path,
@@ -162,7 +138,7 @@ def compare_from_metrics(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     report_path = output_dir / "comparison_report.md"
-    _write_markdown_table(results_df, report_path)
+    results_df.to_markdown(report_path, index=False, floatfmt=".4f")
     results_df.to_csv(output_dir / "comparison_report.csv", index=False)
     return results_df
 
@@ -201,7 +177,7 @@ def main() -> None:
             output_dir=args.output_dir,
         )
         print("\n=== Model Comparison Report (from metrics) ===")
-        print(results_df.to_string(index=False))
+        print(results_df.to_markdown(index=False, floatfmt=".4f"))
         report_path = args.output_dir / "comparison_report.md"
         print(f"\nReport saved to {report_path}")
         return
