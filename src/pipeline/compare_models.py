@@ -10,7 +10,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -27,6 +27,64 @@ from src.data.signals import SignalDataset
 from src.data.splits import get_standard_split
 from src.models.cnn import ECGCNN, ECGCNNConfig
 from src.models.xgb import load_xgb, predict_xgb
+
+
+# ============================================================================
+# Ensemble Optimization
+# ============================================================================
+
+def optimize_ensemble_weight(
+    y_true: np.ndarray,
+    p_cnn: np.ndarray,
+    p_xgb: np.ndarray,
+    metric: str = "roc_auc",
+    alpha_range: Optional[np.ndarray] = None,
+) -> Tuple[float, float, Dict[str, float]]:
+    """
+    Find optimal ensemble weight α via grid search.
+    
+    ensemble_prob = α * p_cnn + (1-α) * p_xgb
+    
+    Args:
+        y_true: Ground truth labels
+        p_cnn: CNN predicted probabilities
+        p_xgb: XGBoost predicted probabilities
+        metric: Optimization metric ("roc_auc", "pr_auc", or "f1")
+        alpha_range: Array of α values to try (default: 0 to 1, step 0.05)
+        
+    Returns:
+        Tuple of (best_alpha, best_score, all_scores_dict)
+    """
+    from sklearn.metrics import roc_auc_score, average_precision_score, f1_score
+    
+    if alpha_range is None:
+        alpha_range = np.linspace(0, 1, 21)  # 0.00, 0.05, ..., 1.00
+    
+    metric_funcs: Dict[str, Callable] = {
+        "roc_auc": lambda y, p: roc_auc_score(y, p),
+        "pr_auc": lambda y, p: average_precision_score(y, p),
+        "f1": lambda y, p: f1_score(y, (p >= 0.5).astype(int)),
+    }
+    
+    if metric not in metric_funcs:
+        raise ValueError(f"Unknown metric: {metric}. Choose from {list(metric_funcs.keys())}")
+    
+    score_func = metric_funcs[metric]
+    
+    best_alpha = 0.5
+    best_score = 0.0
+    all_scores = {}
+    
+    for alpha in alpha_range:
+        p_ens = alpha * p_cnn + (1 - alpha) * p_xgb
+        score = score_func(y_true, p_ens)
+        all_scores[f"alpha_{alpha:.2f}"] = float(score)
+        
+        if score > best_score:
+            best_score = score
+            best_alpha = alpha
+    
+    return float(best_alpha), float(best_score), all_scores
 
 
 def get_cnn_probs(
@@ -262,9 +320,17 @@ def main() -> None:
     print("Running XGB inference...")
     xgb_probs, _ = predict_xgb(xgb_model, xgb_features)
     
-    # 4. Ensemble
-    print("Computing Ensemble...")
-    ensemble_probs = (cnn_probs + xgb_probs) / 2
+    # 4. Ensemble with Optimized Alpha
+    print("\nOptimizing ensemble weight α...")
+    best_alpha, best_score, alpha_scores = optimize_ensemble_weight(
+        y_true, cnn_probs, xgb_probs, metric="roc_auc"
+    )
+    print(f"Best α = {best_alpha:.2f} (AUC = {best_score:.4f})")
+    
+    # Compute ensemble with optimal α
+    ensemble_probs_opt = best_alpha * cnn_probs + (1 - best_alpha) * xgb_probs
+    # Also keep naive average for comparison
+    ensemble_probs_avg = (cnn_probs + xgb_probs) / 2
     
     # 5. Metrics
     print("\nCalculating metrics...")
@@ -283,7 +349,8 @@ def main() -> None:
     results = []
     results.append(calc_metrics(y_true, cnn_probs, "CNN"))
     results.append(calc_metrics(y_true, xgb_probs, "XGBoost"))
-    results.append(calc_metrics(y_true, ensemble_probs, "Ensemble (Avg)"))
+    results.append(calc_metrics(y_true, ensemble_probs_avg, "Ensemble (α=0.5)"))
+    results.append(calc_metrics(y_true, ensemble_probs_opt, f"Ensemble (α={best_alpha:.2f})"))
     
     results_df = pd.DataFrame(results)
     
