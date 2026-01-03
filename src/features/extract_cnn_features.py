@@ -49,7 +49,12 @@ def extract_cnn_features(
     ids_array = np.array(ids) if ids else None
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(output_path, features=feature_array, labels=label_array, ids=ids_array)
+    savez_payload = {"features": feature_array}
+    if label_array is not None:
+        savez_payload["labels"] = label_array
+    if ids_array is not None:
+        savez_payload["ids"] = ids_array
+    np.savez_compressed(output_path, **savez_payload)
     return feature_array, label_array, ids_array
 
 
