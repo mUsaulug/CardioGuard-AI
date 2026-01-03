@@ -1,0 +1,210 @@
+"""Train and evaluate a single ECG experiment run."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import random
+from dataclasses import asdict
+from pathlib import Path
+from typing import Dict, List
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+
+from src.config import PTBXLConfig, get_default_config
+from src.data.signals import SignalDataset, compute_channel_stats, load_signals_batch, normalize_with_stats
+from src.models.cnn import ECGCNN, ECGCNNConfig
+from src.models.trainer import train_one_epoch, validate
+from src.pipeline.data_pipeline import prepare_splits
+from src.pipeline.data_pipeline import ECGDatasetTorch
+
+
+def set_random_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def build_datasets(
+    config: PTBXLConfig,
+    df,
+    splits: Dict[str, np.ndarray],
+    label_column: str,
+) -> Dict[str, ECGDatasetTorch]:
+    train_df = df.loc[splits["train"]]
+    val_df = df.loc[splits["val"]]
+    test_df = df.loc[splits["test"]]
+
+    signals, _ = load_signals_batch(
+        train_df,
+        base_path=config.records_path,
+        filename_column=config.filename_column,
+        progress=False,
+    )
+    mean, std = compute_channel_stats(signals)
+
+    def normalize(signal: np.ndarray) -> np.ndarray:
+        normalized = normalize_with_stats(signal, mean, std)
+        return np.transpose(normalized, (1, 0))
+
+    datasets = {
+        "train": SignalDataset(
+            train_df,
+            config.records_path,
+            filename_column=config.filename_column,
+            label_column=label_column,
+            transform=normalize,
+        ),
+        "val": SignalDataset(
+            val_df,
+            config.records_path,
+            filename_column=config.filename_column,
+            label_column=label_column,
+            transform=normalize,
+        ),
+        "test": SignalDataset(
+            test_df,
+            config.records_path,
+            filename_column=config.filename_column,
+            label_column=label_column,
+            transform=normalize,
+        ),
+    }
+
+    return {split: ECGDatasetTorch(dataset) for split, dataset in datasets.items()}
+
+
+def train_and_evaluate(
+    model: torch.nn.Module,
+    loaders: Dict[str, DataLoader],
+    epochs: int,
+    device: torch.device,
+) -> Dict[str, object]:
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    history: List[Dict[str, float]] = []
+
+    for epoch in range(1, epochs + 1):
+        train_loss = train_one_epoch(model, loaders["train"], optimizer, device)
+        val_loss, val_metrics = validate(model, loaders["val"], device)
+
+        record = {
+            "epoch": epoch,
+            "train_loss": train_loss,
+            "val_loss": val_loss,
+            **val_metrics,
+        }
+        history.append(record)
+
+    test_loss, test_metrics = validate(model, loaders["test"], device)
+
+    return {
+        "history": history,
+        "test": {"loss": test_loss, **test_metrics},
+    }
+
+
+def write_metrics(metrics: Dict[str, object], logs_dir: Path) -> None:
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    json_path = logs_dir / "metrics.json"
+    csv_path = logs_dir / "metrics.csv"
+
+    with json_path.open("w", encoding="utf-8") as handle:
+        json.dump(metrics, handle, indent=2)
+
+    fieldnames = ["phase", "epoch", "train_loss", "val_loss", "roc_auc", "pr_auc", "f1", "accuracy", "loss"]
+    rows = []
+    for record in metrics["history"]:
+        rows.append(
+            {
+                "phase": "val",
+                "epoch": record["epoch"],
+                "train_loss": record["train_loss"],
+                "val_loss": record["val_loss"],
+                "roc_auc": record["roc_auc"],
+                "pr_auc": record["pr_auc"],
+                "f1": record["f1"],
+                "accuracy": record["accuracy"],
+                "loss": "",
+            }
+        )
+    test_metrics = metrics["test"]
+    rows.append(
+        {
+            "phase": "test",
+            "epoch": "",
+            "train_loss": "",
+            "val_loss": "",
+            "roc_auc": test_metrics["roc_auc"],
+            "pr_auc": test_metrics["pr_auc"],
+            "f1": test_metrics["f1"],
+            "accuracy": test_metrics["accuracy"],
+            "loss": test_metrics["loss"],
+        }
+    )
+
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run a single ECG experiment")
+    parser.add_argument("--task", choices=["binary", "multiclass"], default="binary")
+    parser.add_argument("--strategy", default="cnn")
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=16)
+    args = parser.parse_args()
+
+    config = get_default_config()
+    config.task = args.task
+
+    if args.strategy != "cnn":
+        raise ValueError(f"Unsupported strategy: {args.strategy}")
+    if config.task != "binary":
+        raise ValueError("Only binary classification is supported for the CNN strategy.")
+
+    set_random_seed(config.random_seed)
+
+    df, splits, label_column = prepare_splits(config)
+    datasets = build_datasets(config, df, splits, label_column)
+
+    loaders = {
+        split: DataLoader(dataset, batch_size=args.batch_size, shuffle=(split == "train"))
+        for split, dataset in datasets.items()
+    }
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model_config = ECGCNNConfig()
+    model = ECGCNN(model_config).to(device)
+
+    metrics = train_and_evaluate(model, loaders, args.epochs, device)
+
+    logs_dir = Path("logs")
+    checkpoints_dir = Path("checkpoints")
+    checkpoints_dir.mkdir(parents=True, exist_ok=True)
+
+    write_metrics(metrics, logs_dir)
+
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "config": asdict(model_config),
+        "data_config": {
+            "task": config.task,
+            "sampling_rate": config.sampling_rate,
+            "random_seed": config.random_seed,
+        },
+        "metrics": metrics,
+    }
+    torch.save(checkpoint, checkpoints_dir / "ecgcnn.pt")
+
+
+if __name__ == "__main__":
+    main()
