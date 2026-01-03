@@ -53,7 +53,9 @@ def build_datasets(
     )
 
     def normalize(signal: np.ndarray) -> np.ndarray:
-        normalized = normalize_with_stats(signal, mean, std)
+        mean_flat = mean.reshape(-1)
+        std_flat = std.reshape(-1)
+        normalized = normalize_with_stats(signal, mean_flat, std_flat)
         return np.transpose(normalized, (1, 0))
 
     datasets = {
