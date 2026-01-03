@@ -7,6 +7,7 @@ Generates a Markdown report and console output comparing metrics.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -22,7 +23,6 @@ from src.data.loader import load_ptbxl_metadata
 from src.data.signals import SignalDataset
 from src.data.splits import get_standard_split
 from src.models.cnn import ECGCNN, ECGCNNConfig
-from src.models.metrics import compute_classification_metrics
 from src.models.xgb import load_xgb, predict_xgb
 
 
@@ -87,15 +87,97 @@ def get_cnn_embeddings(
 
     return np.concatenate(embeddings_list)
 
+def _load_json(path: Path) -> Dict[str, object]:
+    if not path.exists():
+        raise FileNotFoundError(f"Metrics file not found: {path}")
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if not isinstance(payload, dict):
+        raise ValueError(f"Invalid metrics JSON format: {path}")
+    return payload
+
+
+def _extract_test_metrics(payload: Dict[str, object], label: str) -> Dict[str, float]:
+    if "test" in payload and isinstance(payload["test"], dict):
+        return payload["test"]
+    if "metrics" in payload and isinstance(payload["metrics"], dict):
+        return payload["metrics"]
+    raise KeyError(
+        f"Unable to find test metrics for {label}. Expected 'test' or 'metrics' keys."
+    )
+
+
+def _format_metrics(name: str, metrics: Dict[str, float]) -> Dict[str, object]:
+    return {
+        "Model": name,
+        "AUC": metrics.get("roc_auc"),
+        "PR_AUC": metrics.get("pr_auc"),
+        "F1": metrics.get("f1"),
+        "Accuracy": metrics.get("accuracy"),
+    }
+
+
+def compare_from_metrics(
+    cnn_metrics_path: Path,
+    xgb_metrics_path: Path,
+    output_dir: Path,
+) -> pd.DataFrame:
+    cnn_payload = _load_json(cnn_metrics_path)
+    xgb_payload = _load_json(xgb_metrics_path)
+    cnn_metrics = _extract_test_metrics(cnn_payload, "CNN")
+    xgb_metrics = _extract_test_metrics(xgb_payload, "XGBoost")
+
+    results = [
+        _format_metrics("CNN", cnn_metrics),
+        _format_metrics("XGBoost", xgb_metrics),
+    ]
+    results_df = pd.DataFrame(results)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    report_path = output_dir / "comparison_report.md"
+    results_df.to_markdown(report_path, index=False, floatfmt=".4f")
+    results_df.to_csv(output_dir / "comparison_report.csv", index=False)
+    return results_df
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compare CNN, XGB, and Ensemble")
+    parser.add_argument(
+        "--metrics-only",
+        action="store_true",
+        help="Compare models using existing metrics.json files instead of rerunning inference.",
+    )
+    parser.add_argument(
+        "--cnn-metrics",
+        type=Path,
+        default=Path("logs/cnn/metrics.json"),
+        help="Path to CNN metrics.json (default: logs/cnn/metrics.json)",
+    )
+    parser.add_argument(
+        "--xgb-metrics",
+        type=Path,
+        default=Path("logs/xgb/metrics.json"),
+        help="Path to XGBoost metrics.json (default: logs/xgb/metrics.json)",
+    )
     parser.add_argument("--cnn-path", type=Path, default=Path("checkpoints/ecgcnn.pt"), help="Path to CNN checkpoint")
     parser.add_argument("--xgb-path", type=Path, default=Path("logs/xgb/xgb_model.json"), help="Path to XGB model")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size for inference")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--output-dir", type=Path, default=Path("reports"), help="Output directory")
     args = parser.parse_args()
+
+    if args.metrics_only:
+        print("Loading metrics from JSON files...")
+        results_df = compare_from_metrics(
+            cnn_metrics_path=args.cnn_metrics,
+            xgb_metrics_path=args.xgb_metrics,
+            output_dir=args.output_dir,
+        )
+        print("\n=== Model Comparison Report (from metrics) ===")
+        print(results_df.to_markdown(index=False, floatfmt=".4f"))
+        report_path = args.output_dir / "comparison_report.md"
+        print(f"\nReport saved to {report_path}")
+        return
 
     # 1. Setup & Data Loading
     print(f"Loading data... (Device: {args.device})")
@@ -183,16 +265,6 @@ def main() -> None:
     
     # 5. Metrics
     print("\nCalculating metrics...")
-    metrics_cnn = compute_classification_metrics(y_true, np.log(cnn_probs / (1 - cnn_probs + 1e-9))) # Convert to logits for helper?
-    # Wait, `compute_classification_metrics` takes logits.
-    # cnn_probs are probabilities.
-    # I should adapt `compute_classification_metrics` or pass logits.
-    # The helper `compute_classification_metrics` does `y_probs = 1 / (1 + np.exp(-y_logits))`.
-    # So it EXPECTS LOGITS.
-    # I can inverse sigmoid: ln(p / (1-p)) or just modify the helper call.
-    # Better: Use sklearn directly here or fix the helper usage.
-    # I will basically re-implement metric calc here to be safe and clear.
-    
     from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, f1_score
     
     def calc_metrics(y_t, y_p, name):
