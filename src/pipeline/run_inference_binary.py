@@ -30,7 +30,9 @@ from src.models.xgb import load_xgb
 from src.utils.checkpoints import load_checkpoint_state_dict
 from src.xai.gradcam import GradCAM
 from src.xai.shap_xgb import explain_xgb, plot_shap_waterfall
+from src.xai.summary import summarize_visual_explanations
 from src.xai.visualize import plot_gradcam_heatmap, plot_lead_attention
+from src.utils.llm_prompt import build_clinical_prompt, format_explanation_text
 
 
 DEFAULT_ALPHA = 0.15
@@ -129,11 +131,11 @@ def load_ensemble_alpha(config_path: Optional[Path]) -> float:
 
 def maybe_generate_xai(
     signal: np.ndarray,
-    signal_tensor: torch.Tensor,
-    embedding: np.ndarray,
-    cnn_model: ECGCNN,
-    xgb_model,
-    xgb_scaler,
+    cam: np.ndarray,
+    shap_values: np.ndarray,
+    base_value: float,
+    shap_embedding: np.ndarray,
+    feature_names: list[str],
     output_dir: Optional[Path],
 ) -> Dict[str, str]:
     if output_dir is None:
@@ -141,22 +143,12 @@ def maybe_generate_xai(
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = "inference"
 
-    target_layer = cnn_model.backbone.features[4]
-    gradcam = GradCAM(cnn_model, target_layer)
-    cam = gradcam.generate(signal_tensor).squeeze()
-
     gradcam_path = output_dir / f"{stem}_gradcam.png"
     plot_gradcam_heatmap(signal, cam, save_path=gradcam_path, title="Grad-CAM Attention")
 
     lead_attention_path = output_dir / f"{stem}_lead_attention.png"
     plot_lead_attention(cam, signal=signal, save_path=lead_attention_path, title="Lead Attention")
 
-    shap_embedding = xgb_scaler.transform(embedding) if xgb_scaler is not None else embedding
-    shap_model = getattr(xgb_model, "base_model", xgb_model)
-    shap_result = explain_xgb(shap_model, shap_embedding)
-    shap_values = shap_result["shap_values"]
-    base_value = shap_result["base_value"]
-    feature_names = [f"CNN_Feature_{i}" for i in range(shap_embedding.shape[1])]
     shap_path = output_dir / f"{stem}_shap_waterfall.png"
     plot_shap_waterfall(
         shap_values,
@@ -223,6 +215,23 @@ def main() -> None:
     xgb_embedding = xgb_scaler.transform(embedding) if xgb_scaler is not None else embedding
     xgb_prob = float(xgb_calibrated.predict_proba(xgb_embedding)[0, 1])
 
+    target_layer = cnn_model.backbone.features[4]
+    gradcam = GradCAM(cnn_model, target_layer)
+    cam = gradcam.generate(signal_tensor).squeeze()
+
+    shap_model = getattr(xgb_calibrated, "base_model", xgb_calibrated)
+    shap_result = explain_xgb(shap_model, xgb_embedding)
+    shap_values = shap_result["shap_values"]
+    base_value = shap_result["base_value"]
+    feature_names = [f"CNN_Feature_{i}" for i in range(xgb_embedding.shape[1])]
+
+    visual_summary = summarize_visual_explanations(
+        cam=cam,
+        signal=signal,
+        shap_values=shap_values,
+        feature_names=feature_names,
+    )
+
     alpha = load_ensemble_alpha(args.ensemble_config)
     ensemble_prob = float(alpha * cnn_prob + (1 - alpha) * xgb_prob)
 
@@ -231,18 +240,30 @@ def main() -> None:
 
     xai_images = maybe_generate_xai(
         signal,
-        signal_tensor,
-        embedding,
-        cnn_model,
-        xgb_calibrated,
-        xgb_scaler,
+        cam,
+        shap_values,
+        base_value,
+        xgb_embedding,
+        feature_names,
         args.xai_output_dir,
     )
 
-    explanation_text = (
-        "Binary ensemble inference complete. "
-        f"CNN={cnn_prob:.3f}, XGB={xgb_prob:.3f}, ensemble={ensemble_prob:.3f}, "
-        f"threshold={threshold:.2f}."
+    lead_summary = visual_summary["lead_attention"]
+    shap_summary = visual_summary["shap_summary"]
+
+    explanation_text = format_explanation_text(
+        model_prediction=prediction_label,
+        probability=ensemble_prob,
+        lead_attention=lead_summary,
+        shap_summary=shap_summary,
+    )
+
+    llm_prompt = build_clinical_prompt(
+        model_prediction=prediction_label,
+        probability=ensemble_prob,
+        lead_attention=lead_summary,
+        shap_summary=shap_summary,
+        gradcam_images=[xai_images.get("gradcam", "")],
     )
 
     payload = {
@@ -259,6 +280,7 @@ def main() -> None:
         },
         "xai_images": xai_images,
         "explanation_text": explanation_text,
+        "llm_prompt": llm_prompt,
     }
 
     print(json.dumps(payload, indent=2))
