@@ -8,7 +8,14 @@ from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.metrics import accuracy_score, average_precision_score, classification_report, f1_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    roc_auc_score,
+)
 from xgboost import Booster, DMatrix, XGBClassifier
 
 
@@ -60,6 +67,8 @@ def compute_binary_metrics(
         "accuracy": float(accuracy_score(y_true, preds)),
         "roc_auc": float(roc_auc_score(y_true, y_proba)),
         "pr_auc": float(average_precision_score(y_true, y_proba)),
+        "f1": float(f1_score(y_true, preds)),
+        "confusion_matrix": confusion_matrix(y_true, preds).tolist(),
         "report": classification_report(y_true, preds, output_dict=True),
     }
 
@@ -93,6 +102,7 @@ def calibrate_xgb(
     calibrator = CalibratedClassifierCV(model, method=method, cv="prefit")
     calibrator.fit(features, labels)
     return calibrator
+
 
 def train_xgb(
     X_train: np.ndarray,
