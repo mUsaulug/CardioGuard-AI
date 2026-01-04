@@ -13,6 +13,11 @@ from src.xai.visualize import (
     plot_gradcam_heatmap,
     plot_lead_attention,
 )
+from src.xai.summary import (
+    compute_lead_attention,
+    compute_top_shap_feature,
+    summarize_visual_explanations,
+)
 
 __all__ = [
     "GradCAM",
@@ -24,4 +29,7 @@ __all__ = [
     "plot_ecg_with_prediction",
     "plot_gradcam_heatmap",
     "plot_lead_attention",
+    "compute_lead_attention",
+    "compute_top_shap_feature",
+    "summarize_visual_explanations",
 ]

@@ -66,6 +66,16 @@ class PTBXLConfig:
             return "filename_hr"
 
 
+@dataclass
+class RAGSource:
+    """RAG knowledge source definition."""
+
+    name: str
+    description: str
+    path: Optional[Path] = None
+    notes: Optional[str] = None
+
+
 # Diagnostic class mappings
 DIAGNOSTIC_SUPERCLASSES = ["NORM", "MI", "STTC", "CD", "HYP"]
 DIAGNOSTIC_PRIORITY = ["MI", "STTC", "CD", "HYP", "NORM"]
@@ -88,6 +98,22 @@ MI_CODES = [
     "INJAS",  # Subendocardial injury anteroseptal
     "INJIL",  # Subendocardial injury inferolateral
     "INJLA",  # Subendocardial injury lateral
+]
+
+# RAG sources (placeholders for future ingestion)
+RAG_SOURCES = [
+    RAGSource(
+        name="MI Guideline PDF",
+        description="Myocardial infarction guideline document (to be added).",
+        path=None,
+        notes="Planned: official MI guideline PDF.",
+    ),
+    RAGSource(
+        name="Literature Notes",
+        description="Curated literature notes for MI risk factors (to be added).",
+        path=None,
+        notes="Planned: internal clinical notes.",
+    ),
 ]
 
 
