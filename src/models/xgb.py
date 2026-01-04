@@ -20,8 +20,16 @@ class XGBConfig:
     subsample: float = 0.8
     colsample_bytree: float = 0.8
     objective: str = "binary:logistic"
-    eval_metric: str = "logloss"
+    eval_metric: str = "aucpr"
     random_state: int = 42
+    early_stopping_rounds: int = 30
+    scale_pos_weight: float | None = None
+
+
+def _predict_booster_proba(model: Booster, features: np.ndarray) -> np.ndarray:
+    dmatrix = DMatrix(features)
+    proba = model.predict(dmatrix)
+    return np.asarray(proba)
 
 
 def _predict_booster_proba(model: Booster, features: np.ndarray) -> np.ndarray:
@@ -70,6 +78,12 @@ def train_xgb(
     """Fit an XGBoost classifier and return metrics."""
 
     config = config or XGBConfig()
+    scale_pos_weight = config.scale_pos_weight
+    if scale_pos_weight is None:
+        positives = float((y_train == 1).sum())
+        negatives = float((y_train == 0).sum())
+        if positives > 0:
+            scale_pos_weight = negatives / positives
     model = XGBClassifier(
         n_estimators=config.n_estimators,
         max_depth=config.max_depth,
@@ -79,10 +93,19 @@ def train_xgb(
         objective=config.objective,
         eval_metric=config.eval_metric,
         random_state=config.random_state,
+        scale_pos_weight=scale_pos_weight,
     )
-    model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+    model.fit(
+        X_train,
+        y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=False,
+        early_stopping_rounds=config.early_stopping_rounds,
+    )
     val_proba, _ = predict_xgb(model, X_val)
     metrics = compute_binary_metrics(y_val, val_proba)
+    metrics["best_iteration"] = int(getattr(model, "best_iteration", -1))
+    metrics["best_score"] = float(getattr(model, "best_score", 0.0))
     return model, metrics
 
 
