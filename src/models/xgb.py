@@ -8,7 +8,17 @@ from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.metrics import accuracy_score, average_precision_score, classification_report, f1_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    roc_auc_score,
+)
+import inspect
+import warnings
+
 from xgboost import Booster, DMatrix, XGBClassifier
 
 
@@ -60,6 +70,8 @@ def compute_binary_metrics(
         "accuracy": float(accuracy_score(y_true, preds)),
         "roc_auc": float(roc_auc_score(y_true, y_proba)),
         "pr_auc": float(average_precision_score(y_true, y_proba)),
+        "f1": float(f1_score(y_true, preds)),
+        "confusion_matrix": confusion_matrix(y_true, preds).tolist(),
         "report": classification_report(y_true, preds, output_dict=True),
     }
 
@@ -94,6 +106,7 @@ def calibrate_xgb(
     calibrator.fit(features, labels)
     return calibrator
 
+
 def train_xgb(
     X_train: np.ndarray,
     y_train: np.ndarray,
@@ -121,13 +134,25 @@ def train_xgb(
         random_state=config.random_state,
         scale_pos_weight=scale_pos_weight,
     )
-    model.fit(
-        X_train,
-        y_train,
-        eval_set=[(X_val, y_val)],
-        verbose=False,
-        early_stopping_rounds=config.early_stopping_rounds,
-    )
+    fit_kwargs = {
+        "X": X_train,
+        "y": y_train,
+        "eval_set": [(X_val, y_val)],
+        "verbose": False,
+    }
+    fit_params = set(inspect.signature(model.fit).parameters)
+    if "eval_set" not in fit_params:
+        fit_kwargs.pop("eval_set", None)
+    if "verbose" not in fit_params:
+        fit_kwargs.pop("verbose", None)
+    if "early_stopping_rounds" in fit_params and config.early_stopping_rounds:
+        fit_kwargs["early_stopping_rounds"] = config.early_stopping_rounds
+    elif config.early_stopping_rounds:
+        warnings.warn(
+            "XGBClassifier.fit does not support early_stopping_rounds; continuing without early stopping.",
+            RuntimeWarning,
+        )
+    model.fit(**fit_kwargs)
     val_proba, _ = predict_xgb(model, X_val)
     metrics = compute_binary_metrics(y_val, val_proba)
     metrics["best_iteration"] = int(getattr(model, "best_iteration", -1))
