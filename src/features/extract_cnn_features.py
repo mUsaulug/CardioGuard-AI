@@ -33,35 +33,29 @@ def extract_cnn_features(
                 inputs, batch_labels, _, batch_ids = batch
             elif len(batch) == 3:
                 inputs, batch_labels, batch_ids = batch
-            elif len(batch) == 2:
-                inputs, batch_labels = batch
-                batch_ids = None
             else:
-                raise ValueError("Expected batch with 2 to 4 elements (inputs, labels, [localization], [ids]).")
+                raise ValueError("Expected batch with 3 to 4 elements (inputs, labels, [localization], ids).")
             inputs = inputs.to(device_obj)
             embeddings = model(inputs).cpu().numpy()
             features.append(embeddings)
-            if batch_labels is not None:
-                labels.append(batch_labels.cpu().numpy())
-            if batch_ids is not None:
-                ids.extend([str(item) for item in batch_ids])
+            if batch_labels is None:
+                raise ValueError("Feature extraction requires labels to populate the 'y' field.")
+            labels.append(batch_labels.cpu().numpy())
+            if batch_ids is None:
+                raise ValueError("Feature extraction requires ids to populate the 'ids' field.")
+            ids.extend([str(item) for item in batch_ids])
 
     feature_array = np.concatenate(list(features), axis=0)
-    label_array = np.concatenate(labels, axis=0) if labels else None
-    if label_array is not None:
-        label_array = np.asarray(label_array).reshape(-1)
-    ids_array = np.array(ids) if ids else None
+    if not labels:
+        raise ValueError("No labels collected; cannot save 'y' field.")
+    if not ids:
+        raise ValueError("No ids collected; cannot save 'ids' field.")
+    label_array = np.concatenate(labels, axis=0)
+    label_array = np.asarray(label_array).reshape(-1)
+    ids_array = np.array(ids)
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    savez_payload = {"X": feature_array}
-    # Backward-compatible keys
-    savez_payload["features"] = feature_array
-    if label_array is not None:
-        savez_payload["y"] = label_array
-        savez_payload["labels"] = label_array
-    if ids_array is not None:
-        savez_payload["ids"] = ids_array
-    np.savez_compressed(output_path, **savez_payload)
+    np.savez_compressed(output_path, X=feature_array, y=label_array, ids=ids_array)
     return feature_array, label_array, ids_array
 
 

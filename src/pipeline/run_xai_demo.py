@@ -100,6 +100,12 @@ def main():
     parser.add_argument("--cnn-path", type=Path, default=Path("checkpoints/ecgcnn.pt"))
     parser.add_argument("--xgb-path", type=Path, default=Path("logs/xgb/xgb_model.json"))
     parser.add_argument("--xgb-dir", type=Path, default=Path("logs/xgb"))
+    parser.add_argument(
+        "--artifacts-dir",
+        type=Path,
+        default=Path("logs/xgb/artifacts"),
+        help="Directory containing calibration/scaler artifacts.",
+    )
     parser.add_argument("--output-dir", type=Path, default=Path("reports/xai"))
     parser.add_argument("--num-samples", type=int, default=4)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
@@ -144,13 +150,17 @@ def main():
     print("\n1. Loading models...")
     cnn_model = load_cnn_model(args.cnn_path, args.device)
     xgb_model = load_xgb(args.xgb_path)
-    calibrated_path = args.xgb_dir / "xgb_calibrated.joblib"
+    calibrated_path = args.artifacts_dir / "xgb_calibrated.joblib"
+    if not calibrated_path.exists():
+        calibrated_path = args.xgb_dir / "xgb_calibrated.joblib"
     if calibrated_path.exists():
         xgb_calibrated = joblib.load(calibrated_path)
         print(f"   Loaded calibrated XGBoost model from {calibrated_path}")
     else:
         xgb_calibrated = xgb_model
-    scaler_path = args.xgb_dir / "xgb_scaler.joblib"
+    scaler_path = args.artifacts_dir / "xgb_scaler.joblib"
+    if not scaler_path.exists():
+        scaler_path = args.xgb_dir / "xgb_scaler.joblib"
     if scaler_path.exists():
         xgb_scaler = joblib.load(scaler_path)
         print(f"   Loaded XGBoost scaler from {scaler_path}")
