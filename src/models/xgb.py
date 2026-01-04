@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 from sklearn.metrics import accuracy_score, average_precision_score, classification_report, roc_auc_score
-from xgboost import XGBClassifier
+from xgboost import Booster, DMatrix, XGBClassifier
 
 
 @dataclass
@@ -20,18 +20,28 @@ class XGBConfig:
     subsample: float = 0.8
     colsample_bytree: float = 0.8
     objective: str = "binary:logistic"
-    eval_metric: str = "logloss"
+    eval_metric: str = "aucpr"
     random_state: int = 42
+    early_stopping_rounds: int = 30
+    scale_pos_weight: float | None = None
+
+
+def _predict_booster_proba(model: Booster, features: np.ndarray) -> np.ndarray:
+    dmatrix = DMatrix(features)
+    proba = model.predict(dmatrix)
+    return np.asarray(proba)
 
 
 def predict_xgb(
-    model: XGBClassifier,
+    model: Union[XGBClassifier, Booster],
     features: np.ndarray,
     threshold: float = 0.5,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Predict probabilities and binary labels with an XGBoost model."""
-
-    proba = model.predict_proba(features)[:, 1]
+    if isinstance(model, Booster):
+        proba = _predict_booster_proba(model, features)
+    else:
+        proba = model.predict_proba(features)[:, 1]
     preds = (proba >= threshold).astype(int)
     return proba, preds
 
@@ -62,6 +72,12 @@ def train_xgb(
     """Fit an XGBoost classifier and return metrics."""
 
     config = config or XGBConfig()
+    scale_pos_weight = config.scale_pos_weight
+    if scale_pos_weight is None:
+        positives = float((y_train == 1).sum())
+        negatives = float((y_train == 0).sum())
+        if positives > 0:
+            scale_pos_weight = negatives / positives
     model = XGBClassifier(
         n_estimators=config.n_estimators,
         max_depth=config.max_depth,
@@ -71,10 +87,19 @@ def train_xgb(
         objective=config.objective,
         eval_metric=config.eval_metric,
         random_state=config.random_state,
+        scale_pos_weight=scale_pos_weight,
     )
-    model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+    model.fit(
+        X_train,
+        y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=False,
+        early_stopping_rounds=config.early_stopping_rounds,
+    )
     val_proba, _ = predict_xgb(model, X_val)
     metrics = compute_binary_metrics(y_val, val_proba)
+    metrics["best_iteration"] = int(getattr(model, "best_iteration", -1))
+    metrics["best_score"] = float(getattr(model, "best_score", 0.0))
     return model, metrics
 
 
@@ -84,8 +109,13 @@ def save_xgb(model: XGBClassifier, path: str | Path) -> None:
     model.save_model(path)
 
 
-def load_xgb(path: str | Path) -> XGBClassifier:
+def load_xgb(path: str | Path) -> Union[XGBClassifier, Booster]:
     """Load XGBoost model from JSON."""
     model = XGBClassifier()
-    model.load_model(path)
-    return model
+    try:
+        model.load_model(path)
+        return model
+    except TypeError:
+        booster = Booster()
+        booster.load_model(path)
+        return booster
