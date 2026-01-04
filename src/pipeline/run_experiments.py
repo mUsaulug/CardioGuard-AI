@@ -14,6 +14,7 @@ from src.models.cnn import CNNEncoder, ECGCNN, ECGCNNConfig
 from src.models.trainer import train_one_epoch, validate
 from src.models.xgb import XGBConfig, train_xgb
 from src.xai.shap_xgb import explain_xgb
+from src.utils.checkpoints import load_checkpoint_state_dict
 
 
 def build_dummy_loader(
@@ -25,7 +26,8 @@ def build_dummy_loader(
 
     inputs = torch.randn(num_samples, channels, timesteps)
     labels = torch.randint(0, 2, (num_samples,))
-    dataset = TensorDataset(inputs, labels)
+    ids = torch.arange(num_samples)
+    dataset = TensorDataset(inputs, labels, ids)
     return DataLoader(dataset, batch_size=16, shuffle=True)
 
 
@@ -48,8 +50,11 @@ def main() -> None:
     val_loss, val_metrics = validate(model, val_loader, device)
     train_metrics = {"train_loss": train_loss, "val_loss": val_loss, **val_metrics}
 
+    checkpoint_path = output_dir / "ecgcnn.pt"
+    torch.save({"model_state_dict": model.state_dict()}, checkpoint_path)
     encoder = CNNEncoder(cnn_config)
-    encoder.features.load_state_dict(model.features.state_dict())
+    state_dict = load_checkpoint_state_dict(checkpoint_path, device=str(device))
+    encoder.load_state_dict({k.replace("backbone.", ""): v for k, v in state_dict.items() if k.startswith("backbone.")})
     feature_path = output_dir / "cnn_features.npz"
     features, _, _ = extract_cnn_features(encoder, train_loader, "cpu", feature_path)
 

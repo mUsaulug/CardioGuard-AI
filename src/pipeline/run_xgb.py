@@ -27,33 +27,25 @@ from src.models.xgb import (
 )
 
 
-def load_features(path: str | Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray | None]:
-    """Load features, labels, and optional ids from a .npz file."""
+def load_features(path: str | Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Load features, labels, and ids from a .npz file."""
 
     data = np.load(path)
-    if "X" in data:
-        features = data["X"]
-    elif "features" in data:
-        features = data["features"]
-    else:
-        raise ValueError(f"Missing features in file: {path}. Expected 'X' or 'features'.")
-
-    if "y" in data:
-        labels = data["y"]
-    elif "labels" in data:
-        labels = data["labels"]
-    else:
-        raise ValueError(
-            f"Missing labels in features file: {path}. "
-            "XGBoost training requires labels in the .npz archive."
-        )
+    if "X" not in data:
+        raise ValueError(f"Missing 'X' in features file: {path}.")
+    if "y" not in data:
+        raise ValueError(f"Missing 'y' in features file: {path}.")
+    if "ids" not in data:
+        raise ValueError(f"Missing 'ids' in features file: {path}.")
+    features = data["X"]
+    labels = data["y"]
     labels = np.asarray(labels).reshape(-1)
     if labels.size == 0:
         raise ValueError(
             f"Empty labels in features file: {path}. "
             "XGBoost training requires non-empty labels."
         )
-    ids = data["ids"] if "ids" in data else None
+    ids = data["ids"]
     return features, labels, ids
 
 
@@ -152,20 +144,34 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / "metrics.json"
+    artifacts_dir = output_dir / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    output_path = artifacts_dir / "metrics.json"
     with output_path.open("w", encoding="utf-8") as handle:
         json.dump(results, handle, indent=2)
 
     model_path = output_dir / "xgb_model.json"
     save_xgb(model, model_path)
     if calibrated_model is not None:
-        calibrated_path = output_dir / "xgb_calibrated.joblib"
+        calibrated_path = artifacts_dir / "xgb_calibrated.joblib"
         joblib.dump(calibrated_model, calibrated_path)
         print(f"Saved calibrated XGBoost model to: {calibrated_path}")
     if scaler is not None:
-        scaler_path = output_dir / "xgb_scaler.joblib"
+        scaler_path = artifacts_dir / "xgb_scaler.joblib"
         joblib.dump(scaler, scaler_path)
         print(f"Saved XGBoost scaler to: {scaler_path}")
+    threshold_path = artifacts_dir / "threshold.json"
+    with threshold_path.open("w", encoding="utf-8") as handle:
+        json.dump(
+            {
+                "best_threshold": best_threshold,
+                "best_threshold_f1": best_threshold_f1,
+                "threshold_strategy": "argmax" if is_multiclass else "binary_f1",
+            },
+            handle,
+            indent=2,
+        )
+    print(f"Saved threshold metadata to: {threshold_path}")
 
     config_path = output_dir / "xgb_config.json"
     with config_path.open("w", encoding="utf-8") as handle:
@@ -178,6 +184,7 @@ def main() -> None:
                 "calibration": args.calibration,
                 "random_seed": args.seed,
                 "xgb_config": config.__dict__,
+                "artifacts_dir": str(artifacts_dir),
             },
             handle,
             indent=2,
