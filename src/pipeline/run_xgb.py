@@ -21,6 +21,7 @@ from src.models.xgb import (
     compute_binary_metrics,
     find_best_threshold,
     predict_xgb,
+    save_xgb,
     train_xgb,
 )
 
@@ -145,7 +146,7 @@ def main() -> None:
         json.dump(results, handle, indent=2)
 
     model_path = output_dir / "xgb_model.json"
-    model.save_model(model_path)
+    save_xgb(model, model_path)
     if calibrated_model is not None:
         calibrated_path = output_dir / "xgb_calibrated.joblib"
         joblib.dump(calibrated_model, calibrated_path)

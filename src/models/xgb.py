@@ -221,7 +221,11 @@ def train_xgb(
 def save_xgb(model: XGBClassifier, path: str | Path) -> None:
     """Save XGBoost model to JSON."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    model.save_model(path)
+    try:
+        model.save_model(path)
+    except TypeError:
+        booster = model.get_booster()
+        booster.save_model(path)
 
 
 def load_xgb(path: str | Path) -> Union[XGBClassifier, Booster]:
