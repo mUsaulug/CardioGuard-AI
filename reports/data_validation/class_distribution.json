@@ -1,0 +1,39 @@
+{
+  "n_train_samples": 17418,
+  "multi_label_stats": {
+    "avg_labels_per_sample": 1.268113445860604,
+    "samples_with_multiple_labels": 4069
+  },
+  "class_distribution": {
+    "MI": {
+      "positive": 4379.0,
+      "negative": 13039.0,
+      "positive_rate": 0.2514065908829946,
+      "pos_weight": 2.9776204612925325
+    },
+    "STTC": {
+      "positive": 4087.0,
+      "negative": 13331.0,
+      "positive_rate": 0.23464232403260996,
+      "pos_weight": 3.261805725471006
+    },
+    "CD": {
+      "positive": 3907.0,
+      "negative": 13511.0,
+      "positive_rate": 0.22430818693305776,
+      "pos_weight": 3.4581520348093164
+    },
+    "HYP": {
+      "positive": 2119.0,
+      "negative": 15299.0,
+      "positive_rate": 0.12165575841083937,
+      "pos_weight": 7.219915054270882
+    },
+    "NORM (derived)": {
+      "positive": 7263.0,
+      "negative": 10155.0,
+      "positive_rate": 0.41698243196693074,
+      "note": "NORM is derived, not trained"
+    }
+  }
+}

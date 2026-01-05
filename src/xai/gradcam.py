@@ -66,3 +66,55 @@ class GradCAM:
         cam = cam - cam.min()
         cam = cam / (cam.max() + 1e-8)
         return cam.detach().cpu().numpy()
+
+
+# Class index mapping for multi-label superclass
+SUPERCLASS_CLASS_IDX = {"MI": 0, "STTC": 1, "CD": 2, "HYP": 3}
+
+
+def generate_relevant_gradcam(
+    model: nn.Module,
+    target_layer: nn.Module,
+    inputs: torch.Tensor,
+    probs: dict,
+    thresholds: dict,
+    top_k: int = 3,
+) -> dict:
+    """
+    Generate GradCAM only for relevant classes (threshold exceeded).
+    
+    Classes are sorted by probability (highest first) and limited to top_k.
+    
+    Args:
+        model: CNN model
+        target_layer: Target layer for GradCAM
+        inputs: Input tensor (batch, channels, timesteps)
+        probs: Dict of class -> probability
+        thresholds: Dict of class -> threshold
+        top_k: Maximum number of classes to generate CAM for
+        
+    Returns:
+        Dict of class_name -> cam_array
+    """
+    # Find relevant classes (above threshold)
+    relevant = [
+        cls for cls in ["MI", "STTC", "CD", "HYP"]
+        if probs.get(cls, 0) >= thresholds.get(cls, 0.5)
+    ]
+    
+    # Sort by probability (highest first) and limit to top_k
+    relevant = sorted(relevant, key=lambda c: probs.get(c, 0), reverse=True)[:top_k]
+    
+    if not relevant:
+        return {}
+    
+    gradcam = GradCAM(model, target_layer)
+    results = {}
+    
+    for cls in relevant:
+        class_idx = SUPERCLASS_CLASS_IDX.get(cls)
+        if class_idx is not None:
+            cam = gradcam.generate(inputs, class_index=class_idx)
+            results[cls] = cam
+    
+    return results

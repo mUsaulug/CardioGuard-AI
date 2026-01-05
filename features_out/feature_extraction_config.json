@@ -1,0 +1,16 @@
+{
+  "checkpoint": "checkpoints\\ecgcnn.pt",
+  "output_dir": "features_out",
+  "batch_size": 32,
+  "num_workers": 0,
+  "device": "cpu",
+  "random_seed": 42,
+  "data_root": "C:\\Users\\monster\\Desktop\\Bilimsel\\CardioGuard-AI\\physionet.org\\files\\ptb-xl\\1.0.3",
+  "sampling_rate": 100,
+  "label_task": "binary",
+  "splits": {
+    "train": "features_out\\train.npz",
+    "val": "features_out\\val.npz",
+    "test": "features_out\\test.npz"
+  }
+}

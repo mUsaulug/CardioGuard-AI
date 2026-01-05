@@ -1,0 +1,139 @@
+{
+  "total_records": 21799,
+  "min_likelihood": 0.0,
+  "splits": {
+    "train": {
+      "prefix": "train",
+      "n_samples": 17418,
+      "class_stats": {
+        "MI": {
+          "positive": 4379,
+          "negative": 13039,
+          "pos_rate": 0.2514065908829946,
+          "pos_weight": 2.9776204612925325
+        },
+        "STTC": {
+          "positive": 4087,
+          "negative": 13331,
+          "pos_rate": 0.23464232403260996,
+          "pos_weight": 3.261805725471006
+        },
+        "CD": {
+          "positive": 3907,
+          "negative": 13511,
+          "pos_rate": 0.22430818693305776,
+          "pos_weight": 3.4581520348093164
+        },
+        "HYP": {
+          "positive": 2119,
+          "negative": 15299,
+          "pos_rate": 0.12165575841083937,
+          "pos_weight": 7.219915054270882
+        },
+        "NORM (derived)": {
+          "positive": 7608,
+          "negative": 9810,
+          "pos_rate": 0.4367895280744058,
+          "note": "derived, not trained"
+        }
+      },
+      "multi_label": {
+        "avg_labels_per_sample": 0.8320128321647644,
+        "samples_with_multiple_labels": 3739,
+        "samples_with_no_pathology": 7608
+      }
+    },
+    "val": {
+      "prefix": "val",
+      "n_samples": 2183,
+      "class_stats": {
+        "MI": {
+          "positive": 540,
+          "negative": 1643,
+          "pos_rate": 0.24736601007787448,
+          "pos_weight": 3.0425925925925927
+        },
+        "STTC": {
+          "positive": 515,
+          "negative": 1668,
+          "pos_rate": 0.2359138799816766,
+          "pos_weight": 3.238834951456311
+        },
+        "CD": {
+          "positive": 495,
+          "negative": 1688,
+          "pos_rate": 0.22675217590471827,
+          "pos_weight": 3.4101010101010103
+        },
+        "HYP": {
+          "positive": 268,
+          "negative": 1915,
+          "pos_rate": 0.12276683463124141,
+          "pos_weight": 7.145522388059701
+        },
+        "NORM (derived)": {
+          "positive": 956,
+          "negative": 1227,
+          "pos_rate": 0.4379294548786074,
+          "note": "derived, not trained"
+        }
+      },
+      "multi_label": {
+        "avg_labels_per_sample": 0.8327988982200623,
+        "samples_with_multiple_labels": 465,
+        "samples_with_no_pathology": 956
+      }
+    },
+    "test": {
+      "prefix": "test",
+      "n_samples": 2198,
+      "class_stats": {
+        "MI": {
+          "positive": 550,
+          "negative": 1648,
+          "pos_rate": 0.2502274795268426,
+          "pos_weight": 2.9963636363636366
+        },
+        "STTC": {
+          "positive": 506,
+          "negative": 1692,
+          "pos_rate": 0.2302092811646952,
+          "pos_weight": 3.343873517786561
+        },
+        "CD": {
+          "positive": 496,
+          "negative": 1702,
+          "pos_rate": 0.2256596906278435,
+          "pos_weight": 3.431451612903226
+        },
+        "HYP": {
+          "positive": 262,
+          "negative": 1936,
+          "pos_rate": 0.1191992720655141,
+          "pos_weight": 7.3893129770992365
+        },
+        "NORM (derived)": {
+          "positive": 957,
+          "negative": 1241,
+          "pos_rate": 0.4353958143767061,
+          "note": "derived, not trained"
+        }
+      },
+      "multi_label": {
+        "avg_labels_per_sample": 0.8252957463264465,
+        "samples_with_multiple_labels": 452,
+        "samples_with_no_pathology": 957
+      }
+    }
+  },
+  "pos_weight": {
+    "MI": 2.9776203632354736,
+    "STTC": 3.261805772781372,
+    "CD": 3.4581520557403564,
+    "HYP": 7.21991491317749
+  },
+  "norm_check": {
+    "passed": true,
+    "message": "PASS: NORM does not co-occur with any pathology (NORM count: 9521)"
+  }
+}
