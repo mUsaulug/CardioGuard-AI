@@ -22,6 +22,7 @@ import joblib
 from sklearn.preprocessing import StandardScaler
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import LogisticRegression
+from sklearn.isotonic import IsotonicRegression
 from xgboost import XGBClassifier
 
 from sklearn.metrics import roc_auc_score, average_precision_score, f1_score
@@ -125,15 +126,20 @@ def calibrate_model(
     method: str = "sigmoid",
 ) -> LogisticRegression:
     """
-    Platt calibration using validation set.
+    Platt calibration (sigmoid) or Isotonic calibration using validation set.
     Returns a calibrator that transforms raw probabilities.
     """
     # Get uncalibrated probabilities
     raw_proba = model.predict_proba(X_val)[:, 1]
     
-    # Fit logistic regression for Platt scaling
-    calibrator = LogisticRegression(solver="lbfgs", max_iter=1000)
-    calibrator.fit(raw_proba.reshape(-1, 1), y_val)
+    if method == "isotonic":
+        # Use IsotonicRegression
+        calibrator = IsotonicRegression(out_of_bounds="clip")
+        calibrator.fit(raw_proba, y_val)
+    else:
+        # Default: Sigmoid (Platt) via LogisticRegression
+        calibrator = LogisticRegression(solver="lbfgs", max_iter=1000)
+        calibrator.fit(raw_proba.reshape(-1, 1), y_val)
     
     return calibrator
 
@@ -165,7 +171,11 @@ class CalibratedOVRModel:
             
             if calibrated and cls in self.calibrators:
                 calibrator = self.calibrators[cls]
-                proba = calibrator.predict_proba(raw_proba.reshape(-1, 1))[:, 1]
+                # Isotonic expects 1D array, LogisticRegression expects 2D
+                if isinstance(calibrator, IsotonicRegression):
+                     proba = calibrator.predict(raw_proba)
+                else:
+                     proba = calibrator.predict_proba(raw_proba.reshape(-1, 1))[:, 1]
             else:
                 proba = raw_proba
             

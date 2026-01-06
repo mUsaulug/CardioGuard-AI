@@ -22,7 +22,7 @@ from torch.utils.data import DataLoader
 
 from src.config import get_default_config, PTBXLConfig
 from src.data.loader import load_ptbxl_metadata, load_scp_statements
-from src.data.labels import add_superclass_labels
+from src.data.labels_superclass import add_superclass_labels_derived, PATHOLOGY_CLASSES
 from src.data.splits import get_standard_split, verify_no_patient_leakage
 from src.data.signals import SignalDataset, compute_channel_stats_streaming, normalize_with_stats
 from src.pipeline.train_superclass_cnn import MultiLabelECGCNN, MultiLabelECGDataset, SUPERCLASS_LABELS
@@ -84,7 +84,8 @@ def main():
     print("Loading data...")
     df = load_ptbxl_metadata(config.metadata_path)
     scp_df = load_scp_statements(config.scp_statements_path)
-    df = add_superclass_labels(df, scp_df, args.min_likelihood)
+    # Use derived labels (FIX: This adds y_multi4 column which Dataset expects)
+    df = add_superclass_labels_derived(df, scp_df, args.min_likelihood)
     
     # Get splits
     train_idx, val_idx, test_idx = get_standard_split(df)
