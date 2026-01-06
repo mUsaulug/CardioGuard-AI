@@ -19,6 +19,11 @@ def explain_xgb(
     """Compute SHAP values for the given samples."""
 
     samples = X[:max_samples]
+    
+    # Unwrap ManualCalibratedModel if present
+    if hasattr(model, "base_model"):
+        model = model.base_model
+        
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(samples)
     base_value = explainer.expected_value

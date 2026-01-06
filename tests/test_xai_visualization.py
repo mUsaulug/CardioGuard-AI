@@ -49,11 +49,11 @@ class TestGradCAMVisualization:
     
     def test_plot_lead_attention(self, tmp_path):
         """Test per-lead attention bar chart."""
-        cam = np.random.rand(1000)
-        signal = np.random.randn(12, 1000)
+        # attention_scores should be (12,) for 12 leads
+        attention_scores = np.random.rand(12)
         
         save_path = tmp_path / "lead_attention_test.png"
-        fig = plot_lead_attention(cam, signal=signal, save_path=save_path)
+        fig = plot_lead_attention(attention_scores, output_path=save_path)
         
         assert save_path.exists()
         assert fig is not None

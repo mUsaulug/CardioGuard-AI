@@ -1,0 +1,22 @@
+{
+  "run_id": "20260106_100417__6eb3716__ecgcnn__binary",
+  "task": "binary",
+  "model_id": "ecgcnn",
+  "xgb_id": "xgb",
+  "baseline_source": "zeros",
+  "git_sha": "6eb3716",
+  "start_time": "2026-01-06T07:04:17.117050Z",
+  "end_time": "2026-01-06T07:04:17.217360Z",
+  "duration_seconds": 0.10031,
+  "n_samples": 0,
+  "n_reliable_explanations": 0,
+  "reliability_rate": 0,
+  "accuracy": null,
+  "files": {
+    "cards": "cards.jsonl",
+    "tables": null,
+    "tensors": "tensors/",
+    "visuals": "visuals/",
+    "narratives": "text/"
+  }
+}

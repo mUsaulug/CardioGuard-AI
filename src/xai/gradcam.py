@@ -72,6 +72,65 @@ class GradCAM:
 SUPERCLASS_CLASS_IDX = {"MI": 0, "STTC": 1, "CD": 2, "HYP": 3}
 
 
+def smooth_gradcam(
+    model: nn.Module,
+    target_layer: nn.Module,
+    inputs: torch.Tensor,
+    class_index: int | None = None,
+    n_samples: int = 5,
+    noise_std: float = 0.1
+) -> np.ndarray:
+    """
+    SmoothGrad-CAM: Average Grad-CAM over multiple noisy samples.
+    
+    This produces more stable and robust explanations by reducing
+    sensitivity to small input perturbations.
+    
+    Args:
+        model: CNN model
+        target_layer: Target layer for Grad-CAM
+        inputs: Input tensor (batch, channels, timesteps)
+        class_index: Target class index (None = argmax)
+        n_samples: Number of noisy samples to average
+        noise_std: Standard deviation of Gaussian noise (relative to input std)
+    
+    Returns:
+        Averaged CAM heatmap
+    """
+    gradcam = GradCAM(model, target_layer)
+    cams = []
+    
+    # Get input statistics for scaling noise
+    input_std = float(inputs.std().item()) + 1e-8
+    
+    for _ in range(n_samples):
+        # Add Gaussian noise
+        noise = torch.randn_like(inputs) * noise_std * input_std
+        noisy_input = inputs + noise
+        noisy_input.requires_grad_(True)
+        
+        # Generate CAM
+        try:
+            cam = gradcam.generate(noisy_input, class_index=class_index)
+            cams.append(cam)
+        except RuntimeError:
+            # Skip if gradient computation fails
+            continue
+    
+    if not cams:
+        # Fallback to single sample
+        return gradcam.generate(inputs, class_index=class_index)
+    
+    # Average all CAMs
+    averaged_cam = np.mean(cams, axis=0)
+    
+    # Re-normalize
+    averaged_cam = averaged_cam - averaged_cam.min()
+    averaged_cam = averaged_cam / (averaged_cam.max() + 1e-8)
+    
+    return averaged_cam
+
+
 def generate_relevant_gradcam(
     model: nn.Module,
     target_layer: nn.Module,

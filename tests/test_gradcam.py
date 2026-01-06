@@ -9,7 +9,8 @@ from src.xai.gradcam import GradCAM
 def test_gradcam_ecgcnn_shape() -> None:
     config = ECGCNNConfig(in_channels=12, num_filters=16)
     model = ECGCNN(config)
-    target_layer = model.features[4]
+    # ECGCNN has backbone.features, not features directly
+    target_layer = model.backbone.features[4]
     gradcam = GradCAM(model, target_layer)
     dummy = torch.randn(2, 12, 128)
 
