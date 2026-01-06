@@ -257,7 +257,14 @@ def _save_ensemble_config(
     return config_path
 
 
-def _load_best_threshold(metrics_path: Path) -> float:
+def _load_best_threshold(metrics_path: Path, threshold_path: Path) -> float:
+    if threshold_path.exists():
+        payload = _load_json(threshold_path)
+        threshold = payload.get("best_threshold", 0.5)
+        try:
+            return float(threshold)
+        except (TypeError, ValueError):
+            return 0.5
     if not metrics_path.exists():
         return 0.5
     payload = _load_json(metrics_path)
@@ -315,11 +322,18 @@ def main() -> None:
     parser.add_argument(
         "--xgb-metrics",
         type=Path,
-        default=Path("logs/xgb/metrics.json"),
-        help="Path to XGBoost metrics.json (default: logs/xgb/metrics.json)",
+        default=Path("logs/xgb/artifacts/metrics.json"),
+        help="Path to XGBoost metrics.json (default: logs/xgb/artifacts/metrics.json)",
     )
     parser.add_argument("--cnn-path", type=Path, default=Path("checkpoints/ecgcnn.pt"), help="Path to CNN checkpoint")
     parser.add_argument("--xgb-path", type=Path, default=Path("logs/xgb/xgb_model.json"), help="Path to XGB model")
+    parser.add_argument(
+        "--artifacts-dir",
+        type=Path,
+        default=Path("logs/xgb/artifacts"),
+        help="Directory containing calibration/threshold/scaler artifacts.",
+    )
+    parser.add_argument("--threshold-path", type=Path, default=Path("logs/xgb/artifacts/threshold.json"))
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size for inference")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--output-dir", type=Path, default=Path("reports"), help="Output directory")
@@ -414,11 +428,15 @@ def main() -> None:
         sys.exit(1)
         
     xgb_model = load_xgb(args.xgb_path)
-    calibrated_path = args.xgb_path.parent / "xgb_calibrated.joblib"
+    calibrated_path = args.artifacts_dir / "xgb_calibrated.joblib"
+    if not calibrated_path.exists():
+        calibrated_path = args.xgb_path.parent / "xgb_calibrated.joblib"
     if calibrated_path.exists():
         xgb_model = joblib.load(calibrated_path)
         print(f"Loaded calibrated XGBoost model from {calibrated_path}")
-    scaler_path = args.xgb_path.parent / "xgb_scaler.joblib"
+    scaler_path = args.artifacts_dir / "xgb_scaler.joblib"
+    if not scaler_path.exists():
+        scaler_path = args.xgb_path.parent / "xgb_scaler.joblib"
     scaler = None
     if scaler_path.exists():
         scaler = joblib.load(scaler_path)
@@ -460,7 +478,7 @@ def main() -> None:
     print("\nCalculating metrics...")
     from sklearn.metrics import accuracy_score, average_precision_score, f1_score, roc_auc_score
     from sklearn.preprocessing import label_binarize
-    xgb_threshold = _load_best_threshold(args.xgb_metrics)
+    xgb_threshold = _load_best_threshold(args.xgb_metrics, args.threshold_path)
     
     def calc_metrics(y_t, y_p, name, threshold=0.5):
         if y_p.ndim > 1:

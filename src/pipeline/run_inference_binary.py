@@ -129,7 +129,15 @@ def decode_localization_bounds(
     return start_idx, end_idx
 
 
-def load_threshold(metrics_path: Optional[Path]) -> float:
+def load_threshold(threshold_path: Optional[Path], metrics_path: Optional[Path]) -> float:
+    if threshold_path is not None and threshold_path.exists():
+        with threshold_path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        threshold = payload.get("best_threshold", 0.5)
+        try:
+            return float(threshold)
+        except (TypeError, ValueError):
+            return 0.5
     if metrics_path is None or not metrics_path.exists():
         return 0.5
     with metrics_path.open("r", encoding="utf-8") as handle:
@@ -216,16 +224,29 @@ def main() -> None:
     parser.add_argument("--cnn-path", type=Path, default=Path("checkpoints/ecgcnn.pt"))
     parser.add_argument("--xgb-dir", type=Path, default=Path("logs/xgb"))
     parser.add_argument("--xgb-path", type=Path, default=Path("logs/xgb/xgb_model.json"))
+    parser.add_argument(
+        "--artifacts-dir",
+        type=Path,
+        default=Path("logs/xgb/artifacts"),
+        help="Directory containing calibration/threshold/scaler artifacts.",
+    )
     parser.add_argument("--ensemble-config", type=Path, default=Path("reports/ensemble_config.json"))
-    parser.add_argument("--metrics-path", type=Path, default=Path("logs/xgb/metrics.json"))
+    parser.add_argument("--metrics-path", type=Path, default=Path("logs/xgb/artifacts/metrics.json"))
+    parser.add_argument("--threshold-path", type=Path, default=Path("logs/xgb/artifacts/threshold.json"))
     parser.add_argument("--stats-npz", type=Path, default=None, help="NPZ with mean/std arrays")
     parser.add_argument("--xai-output-dir", type=Path, default=Path("reports/xai"))
+    parser.add_argument(
+        "--mode",
+        choices=["binary", "multiclass", "localization"],
+        default="binary",
+        help="Inference mode to run.",
+    )
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
     if not args.cnn_path.exists():
         raise FileNotFoundError(f"CNN checkpoint not found: {args.cnn_path}")
-    if not args.xgb_path.exists():
+    if args.mode in {"binary", "multiclass"} and not args.xgb_path.exists():
         raise FileNotFoundError(f"XGBoost model not found: {args.xgb_path}")
 
     signal = load_ecg_signal(args.input)
@@ -234,16 +255,20 @@ def main() -> None:
     signal = apply_normalization(signal, stats)
 
     cnn_model = load_cnn_model(args.cnn_path, args.device)
-    xgb_model = load_xgb(args.xgb_path)
+    xgb_model = load_xgb(args.xgb_path) if args.mode in {"binary", "multiclass"} else None
 
-    calibrated_path = args.xgb_dir / "xgb_calibrated.joblib"
-    if calibrated_path.exists():
+    calibrated_path = args.artifacts_dir / "xgb_calibrated.joblib"
+    if not calibrated_path.exists():
+        calibrated_path = args.xgb_dir / "xgb_calibrated.joblib"
+    if xgb_model is not None and calibrated_path.exists():
         xgb_calibrated = joblib.load(calibrated_path)
     else:
         xgb_calibrated = xgb_model
 
-    scaler_path = args.xgb_dir / "xgb_scaler.joblib"
-    xgb_scaler = joblib.load(scaler_path) if scaler_path.exists() else None
+    scaler_path = args.artifacts_dir / "xgb_scaler.joblib"
+    if not scaler_path.exists():
+        scaler_path = args.xgb_dir / "xgb_scaler.joblib"
+    xgb_scaler = joblib.load(scaler_path) if (xgb_model is not None and scaler_path.exists()) else None
 
     signal_tensor = torch.tensor(signal, dtype=torch.float32).unsqueeze(0)
     if signal_tensor.shape[1] != 12:
@@ -258,88 +283,121 @@ def main() -> None:
         else:
             cnn_logit = output
             localization_pred = None
-        cnn_prob = torch.sigmoid(cnn_logit).item()
+        if cnn_logit.ndim == 2 and cnn_logit.shape[1] > 1:
+            cnn_prob = torch.softmax(cnn_logit, dim=1).cpu().numpy()[0]
+        else:
+            cnn_prob = torch.sigmoid(cnn_logit).item()
         embedding = cnn_model.backbone(signal_tensor).cpu().numpy()
 
-    xgb_embedding = xgb_scaler.transform(embedding) if xgb_scaler is not None else embedding
-    xgb_prob = float(xgb_calibrated.predict_proba(xgb_embedding)[0, 1])
-
-    target_layer = cnn_model.backbone.features[4]
-    gradcam = GradCAM(cnn_model, target_layer)
-    cam = gradcam.generate(signal_tensor).squeeze()
-
-    shap_model = getattr(xgb_calibrated, "base_model", xgb_calibrated)
-    shap_result = explain_xgb(shap_model, xgb_embedding)
-    shap_values = shap_result["shap_values"]
-    base_value = shap_result["base_value"]
-    feature_names = [f"CNN_Feature_{i}" for i in range(xgb_embedding.shape[1])]
-
-    visual_summary = summarize_visual_explanations(
-        cam=cam,
-        signal=signal,
-        shap_values=shap_values,
-        feature_names=feature_names,
-    )
-
-    alpha = load_ensemble_alpha(args.ensemble_config)
-    ensemble_prob = float(alpha * cnn_prob + (1 - alpha) * xgb_prob)
-
-    threshold = load_threshold(args.metrics_path)
-    prediction_label = "MI" if ensemble_prob >= threshold else "NORM"
+    if args.mode == "localization" and localization_pred is None:
+        raise ValueError("Localization mode requested, but checkpoint has no localization head.")
 
     localization_bounds = decode_localization_bounds(
         localization_pred,
         num_samples=signal_tensor.shape[-1],
     )
 
-    xai_images = maybe_generate_xai(
-        signal,
-        cam,
-        shap_values,
-        base_value,
-        xgb_embedding,
-        feature_names,
-        args.xai_output_dir,
-        localization_bounds=localization_bounds,
-    )
+    payload: Dict[str, object] = {"mode": args.mode}
 
-    lead_summary = visual_summary["lead_attention"]
-    shap_summary = visual_summary["shap_summary"]
+    if args.mode in {"binary", "multiclass"}:
+        xgb_embedding = xgb_scaler.transform(embedding) if xgb_scaler is not None else embedding
+        xgb_proba = xgb_calibrated.predict_proba(xgb_embedding)[0]
+        alpha = load_ensemble_alpha(args.ensemble_config)
 
-    explanation_text = format_explanation_text(
-        model_prediction=prediction_label,
-        probability=ensemble_prob,
-        lead_attention=lead_summary,
-        shap_summary=shap_summary,
-    )
+        if args.mode == "binary":
+            xgb_prob = float(xgb_proba[1]) if xgb_proba.size > 1 else float(xgb_proba[0])
+            ensemble_prob = float(alpha * float(cnn_prob) + (1 - alpha) * xgb_prob)
+            threshold = load_threshold(args.threshold_path, args.metrics_path)
+            prediction_label = "MI" if ensemble_prob >= threshold else "NORM"
 
-    llm_prompt = build_clinical_prompt(
-        model_prediction=prediction_label,
-        probability=ensemble_prob,
-        lead_attention=lead_summary,
-        shap_summary=shap_summary,
-        gradcam_images=[xai_images.get("gradcam", "")],
-    )
+            target_layer = cnn_model.backbone.features[4]
+            gradcam = GradCAM(cnn_model, target_layer)
+            cam = gradcam.generate(signal_tensor).squeeze()
 
-    payload = {
-        "mode": "binary",
-        "prediction": {
-            "label": prediction_label,
-            "value": int(ensemble_prob >= threshold),
-            "threshold": threshold,
-        },
-        "probabilities": {
-            "cnn": cnn_prob,
-            "xgb": xgb_prob,
-            "ensemble": ensemble_prob,
-        },
-        "localization": {
-            "bounds": localization_bounds,
-        },
-        "xai_images": xai_images,
-        "explanation_text": explanation_text,
-        "llm_prompt": llm_prompt,
-    }
+            shap_model = getattr(xgb_calibrated, "base_model", xgb_calibrated)
+            shap_result = explain_xgb(shap_model, xgb_embedding)
+            shap_values = shap_result["shap_values"]
+            base_value = shap_result["base_value"]
+            feature_names = [f"CNN_Feature_{i}" for i in range(xgb_embedding.shape[1])]
+
+            visual_summary = summarize_visual_explanations(
+                cam=cam,
+                signal=signal,
+                shap_values=shap_values,
+                feature_names=feature_names,
+            )
+
+            xai_images = maybe_generate_xai(
+                signal,
+                cam,
+                shap_values,
+                base_value,
+                xgb_embedding,
+                feature_names,
+                args.xai_output_dir,
+                localization_bounds=localization_bounds,
+            )
+
+            lead_summary = visual_summary["lead_attention"]
+            shap_summary = visual_summary["shap_summary"]
+
+            explanation_text = format_explanation_text(
+                model_prediction=prediction_label,
+                probability=ensemble_prob,
+                lead_attention=lead_summary,
+                shap_summary=shap_summary,
+            )
+
+            llm_prompt = build_clinical_prompt(
+                model_prediction=prediction_label,
+                probability=ensemble_prob,
+                lead_attention=lead_summary,
+                shap_summary=shap_summary,
+                gradcam_images=[xai_images.get("gradcam", "")],
+            )
+
+            payload.update(
+                {
+                    "prediction": {
+                        "label": prediction_label,
+                        "value": int(ensemble_prob >= threshold),
+                        "threshold": threshold,
+                    },
+                    "probabilities": {
+                        "cnn": float(cnn_prob),
+                        "xgb": xgb_prob,
+                        "ensemble": ensemble_prob,
+                    },
+                    "localization": {"bounds": localization_bounds},
+                    "xai_images": xai_images,
+                    "explanation_text": explanation_text,
+                    "llm_prompt": llm_prompt,
+                }
+            )
+        else:
+            if not isinstance(cnn_prob, np.ndarray):
+                raise ValueError("Multiclass mode requires CNN logits with multiple classes.")
+            if xgb_proba.shape != cnn_prob.shape:
+                raise ValueError(
+                    f"Mismatch between CNN probs {cnn_prob.shape} and XGB probs {xgb_proba.shape}."
+                )
+            ensemble_probs = alpha * cnn_prob + (1 - alpha) * xgb_proba
+            predicted_index = int(np.argmax(ensemble_probs))
+            payload.update(
+                {
+                    "prediction": {
+                        "class_index": predicted_index,
+                        "probability": float(ensemble_probs[predicted_index]),
+                    },
+                    "probabilities": {
+                        "cnn": cnn_prob.tolist(),
+                        "xgb": xgb_proba.tolist(),
+                        "ensemble": ensemble_probs.tolist(),
+                    },
+                }
+            )
+    else:
+        payload["localization"] = {"bounds": localization_bounds}
 
     print(json.dumps(payload, indent=2))
 
