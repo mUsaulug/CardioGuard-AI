@@ -17,6 +17,7 @@ from typing import Dict, Any, Optional, Tuple
 
 import numpy as np
 import torch
+from torch import nn
 import joblib
 from sklearn.isotonic import IsotonicRegression  # Import needed for instance check
 
@@ -26,14 +27,12 @@ from src.pipeline.train_mi_localization import MI_LOCALIZATION_REGIONS
 from src.xai.gradcam import generate_relevant_gradcam
 from src.xai.shap_ovr import explain_single_sample
 from src.xai.unified import UnifiedExplainer
-from src.xai.unified import UnifiedExplainer
 from src.xai.sanity import XAISanityChecker
 from src.xai.visualize import plot_12lead_gradcam
 
 
 # Default paths
 DEFAULT_CNN_CHECKPOINT = Path("checkpoints/ecgcnn_superclass.pt")
-DEFAULT_XGB_DIR = Path("logs/xgb_superclass")
 DEFAULT_XGB_DIR = Path("logs/xgb_superclass")
 DEFAULT_THRESHOLDS = Path("artifacts/thresholds_superclass.json")
 DEFAULT_LOCALIZATION_CHECKPOINT = Path("checkpoints/ecgcnn_localization.pt")
