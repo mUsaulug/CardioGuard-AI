@@ -17,7 +17,11 @@ import pandas as pd
 
 from src.config import get_default_config, DIAGNOSTIC_SUPERCLASSES
 from src.data.loader import load_ptbxl_metadata, load_scp_statements
-from src.data.labels import add_superclass_labels, add_5class_labels
+from src.data.labels_superclass import (
+    add_superclass_labels_derived, 
+    compute_cooccurrence_derived,
+    PATHOLOGY_CLASSES
+)
 from src.data.splits import get_standard_split, verify_no_patient_leakage, get_split_statistics
 
 
@@ -124,8 +128,8 @@ def analyze_class_distribution(
     Returns:
         Dictionary with class distribution and pos_weight recommendations
     """
-    # Add superclass labels
-    df_labeled = add_superclass_labels(df.copy(), scp_df, min_likelihood)
+    # Add superclass labels (Derived NORM)
+    df_labeled = add_superclass_labels_derived(df.copy(), scp_df, min_likelihood)
     
     # Get training subset
     train_df = df_labeled.loc[train_idx]
@@ -133,8 +137,16 @@ def analyze_class_distribution(
     
     # Count per-class positives (multi-label)
     class_counts = {}
-    for cls in SUPERCLASS_LABELS:  # MI, STTC, CD, HYP (not NORM)
-        positive = train_df["diagnostic_superclass"].apply(lambda x: cls in x).sum()
+    for cls in PATHOLOGY_CLASSES:  # MI, STTC, CD, HYP
+        # In labels_superclass, we use y_multi4 OR superclass_pathologies
+        # Let's use y_multi4 if available (it should be)
+        if "y_multi4" in train_df.columns:
+            cls_idx = PATHOLOGY_CLASSES.index(cls)
+            positive = train_df["y_multi4"].apply(lambda x: x[cls_idx] == 1).sum()
+        else:
+            # Fallback
+            positive = train_df["superclass_pathologies"].apply(lambda x: cls in x).sum()
+            
         class_counts[cls] = {
             "positive": int(positive),
             "negative": int(n_train - positive),
@@ -143,9 +155,11 @@ def analyze_class_distribution(
         }
     
     # NORM is derived: NORM = 1 iff no pathology
-    norm_positive = train_df["diagnostic_superclass"].apply(
-        lambda x: len(x) == 1 and "NORM" in x
-    ).sum()
+    if "y_multi4" in train_df.columns:
+        # NORM is when all pathologies are 0
+        norm_positive = train_df["y_multi4"].apply(lambda x: x.sum() == 0).sum()
+    else:
+        norm_positive = train_df["superclass_pathologies"].apply(len).eq(0).sum()
     class_counts["NORM (derived)"] = {
         "positive": int(norm_positive),
         "negative": int(n_train - norm_positive),
@@ -185,14 +199,14 @@ def analyze_labels(
     Returns:
         Dictionary with all analysis results
     """
-    # Add superclass labels
-    df_labeled = add_superclass_labels(df.copy(), scp_df, min_likelihood)
+    # Add superclass labels (Derived)
+    df_labeled = add_superclass_labels_derived(df.copy(), scp_df, min_likelihood)
     
     # Get splits
     train_idx, val_idx, test_idx = get_standard_split(df_labeled)
     
-    # Compute co-occurrence
-    cooccur = compute_label_cooccurrence(df_labeled, min_likelihood)
+    # Compute co-occurrence using derived logic
+    cooccur = compute_cooccurrence_derived(df_labeled, min_likelihood)
     
     # Analyze class distribution (train only for pos_weight)
     class_dist = analyze_class_distribution(df_labeled, train_idx, scp_df, min_likelihood)

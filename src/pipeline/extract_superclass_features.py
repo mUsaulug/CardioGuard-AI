@@ -25,7 +25,12 @@ from src.data.loader import load_ptbxl_metadata, load_scp_statements
 from src.data.labels_superclass import add_superclass_labels_derived, PATHOLOGY_CLASSES
 from src.data.splits import get_standard_split, verify_no_patient_leakage
 from src.data.signals import SignalDataset, compute_channel_stats_streaming, normalize_with_stats
-from src.pipeline.train_superclass_cnn import MultiLabelECGCNN, MultiLabelECGDataset, SUPERCLASS_LABELS
+from src.pipeline.train_superclass_cnn import (
+    MultiLabelECGCNN, 
+    MultiLabelECGDataset, 
+    SUPERCLASS_LABELS,
+    filter_missing_files  # Import the robust filter
+)
 
 
 def set_seed(seed: int = 42):
@@ -86,6 +91,9 @@ def main():
     scp_df = load_scp_statements(config.scp_statements_path)
     # Use derived labels (FIX: This adds y_multi4 column which Dataset expects)
     df = add_superclass_labels_derived(df, scp_df, args.min_likelihood)
+    
+    # Filter missing files (CRITICAL FIX for FileNotFoundError)
+    df = filter_missing_files(df, config.data_root, config.filename_column)
     
     # Get splits
     train_idx, val_idx, test_idx = get_standard_split(df)
