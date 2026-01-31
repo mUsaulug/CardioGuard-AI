@@ -1,0 +1,31 @@
+=== BACKEND STARTUP LOG ===
+Date: 2026-01-31T05:40:00+03:00
+
+=== STARTUP SEQUENCE ===
+INFO: Started server process [41464]
+INFO: Waiting for application startup
+
+=== CHECKPOINT VALIDATION ===
+Validating checkpoints...
+Checkpoint validation passed!
+  binary: out_dim=1 ✓
+  superclass: out_dim=4 ✓
+  mi_localization: out_dim=5 ✓
+  fingerprint: out_dim=None ✓
+
+=== MODEL LOADING ===
+Loading models...
+Models loaded: Superclass=OK, Localization=True, XGB=OK
+
+=== HEALTH CHECK ===
+GET /health
+Response: {"status":"healthy","timestamp":"2026-01-31T02:41:46.679097"}
+
+=== READY CHECK ===
+GET /ready
+Response: {"ready":true,"models_loaded":{"superclass":true,"localization":true,"xgb":true,"thresholds":true},"message":"Ready"}
+
+=== CONCLUSION ===
+Backend started successfully.
+All models loaded.
+All endpoints responsive.

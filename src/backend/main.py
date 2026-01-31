@@ -322,6 +322,7 @@ async def startup_event():
 def parse_ecg_file(file_content: bytes, filename: str) -> np.ndarray:
     """Parse uploaded ECG file with temp cleanup."""
     tmp_path = None
+    data = None
     try:
         with tempfile.NamedTemporaryFile(suffix=Path(filename).suffix, delete=False) as tmp:
             tmp.write(file_content)
@@ -330,18 +331,27 @@ def parse_ecg_file(file_content: bytes, filename: str) -> np.ndarray:
         if filename.endswith(".npz"):
             data = np.load(tmp_path)
             if "signal" in data:
-                signal = data["signal"]
+                signal = data["signal"].copy()  # Copy to release file handle
             elif "X" in data:
-                signal = data["X"]
+                signal = data["X"].copy()
             else:
-                signal = data[list(data.keys())[0]]
+                signal = data[list(data.keys())[0]].copy()
+            data.close()  # Explicitly close NPZ file handle
         elif filename.endswith(".npy"):
             signal = np.load(tmp_path)
         else:
             raise HTTPException(400, f"Unsupported file format: {filename}")
     finally:
+        if data is not None:
+            try:
+                data.close()
+            except:
+                pass
         if tmp_path and tmp_path.exists():
-            tmp_path.unlink()
+            try:
+                tmp_path.unlink()
+            except:
+                pass  # Ignore if file still locked
     
     # Ensure (channels, timesteps) format
     if signal.ndim == 1:
@@ -494,9 +504,12 @@ async def predict_superclass(
     # Prepare run_dir for explain=true
     run_id = None
     run_dir = None
+    save_plot = None
     if explain:
         run_id = generate_run_id("api", "multiclass")
         run_dir = RUNS_DIR / run_id
+        (run_dir / "visuals").mkdir(parents=True, exist_ok=True)
+        save_plot = run_dir / "visuals" / f"{sample_id}_report.png"
     
     # PIPELINE DOES ALL WORK - no inline inference here
     try:
@@ -513,8 +526,11 @@ async def predict_superclass(
             sanity_check=sanity_check,
             run_dir=run_dir,
             sample_id=sample_id,
+            save_plot=save_plot,
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(500, f"Prediction failed: {e}")
     
     # Read XAI info from manifest (if explain=true, pipeline wrote it)

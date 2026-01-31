@@ -189,6 +189,12 @@ def explain_single_sample(
             "expected_value": float(explainer.expected_value) if np.isscalar(explainer.expected_value) else float(explainer.expected_value[1]),
             "prediction_contribution": float(shap_values[0].sum()),
         }
+        
+        # Compute feature importance for this sample (abs SHAP)
+        results[cls]["feature_importance"] = np.abs(results[cls]["shap_values"])
+        
+        # Get top features
+        results[cls]["top_features"] = get_top_features(results[cls], top_k=10)
     
     return results
 

@@ -8,6 +8,7 @@ interface ArtifactRendererProps {
 }
 
 const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ artifact, baseUrl }) => {
+  if (!artifact || !artifact.url) return null;
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const fullUrl = cleanUrl(baseUrl, artifact.url);
@@ -87,7 +88,7 @@ export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
       )}
 
       <div className="grid grid-cols-1 gap-6">
-        {artifacts.map((artifact, idx) => (
+        {(artifacts || []).map((artifact, idx) => (
           <ArtifactRenderer key={idx} artifact={artifact} baseUrl={baseUrl} />
         ))}
       </div>

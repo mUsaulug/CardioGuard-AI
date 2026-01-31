@@ -51,7 +51,7 @@ export default function SuperclassPanel({ baseUrl, disabled }: Props) {
         baseUrl,
         `/predict/superclass?${params.toString()}`,
         { method: "POST", body: formData },
-        60000 
+        60000
       );
       setResult(data);
     } catch (err: any) {
@@ -65,11 +65,11 @@ export default function SuperclassPanel({ baseUrl, disabled }: Props) {
     <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-100 flex flex-col h-full">
       <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
         <div>
-            <h2 className="font-bold text-lg">Predict Superclass</h2>
-            <p className="text-blue-100 text-xs">Multilabel Classification</p>
+          <h2 className="font-bold text-lg">Predict Superclass</h2>
+          <p className="text-blue-100 text-xs">Multilabel Classification</p>
         </div>
         <div className="bg-blue-700 p-1.5 rounded">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
         </div>
       </div>
 
@@ -87,11 +87,11 @@ export default function SuperclassPanel({ baseUrl, disabled }: Props) {
             />
             <p className="text-[10px] text-gray-400 mt-1 text-right">Max size: 10MB</p>
           </div>
-          
+
           <div>
             <div className="flex justify-between items-center mb-1">
-                <label className="block text-sm font-medium text-gray-700">Ensemble Weight</label>
-                <span className="text-xs font-mono bg-white px-2 py-0.5 rounded border">{ensembleWeight}</span>
+              <label className="block text-sm font-medium text-gray-700">Ensemble Weight</label>
+              <span className="text-xs font-mono bg-white px-2 py-0.5 rounded border">{ensembleWeight}</span>
             </div>
             <input
               type="range"
@@ -104,9 +104,9 @@ export default function SuperclassPanel({ baseUrl, disabled }: Props) {
               className="w-full accent-blue-600 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-gray-400 px-1">
-                <span>CNN</span>
-                <span>Ensemble</span>
-                <span>XGB</span>
+              <span>CNN</span>
+              <span>Ensemble</span>
+              <span>XGB</span>
             </div>
           </div>
 
@@ -133,8 +133,8 @@ export default function SuperclassPanel({ baseUrl, disabled }: Props) {
 
         {/* Error */}
         {error && <div className="text-red-600 text-sm bg-red-50 p-3 rounded border border-red-200 flex items-start gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span className="break-all">{error}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-shrink-0"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          <span className="break-all">{error}</span>
         </div>}
 
         {/* Results */}
@@ -145,10 +145,10 @@ export default function SuperclassPanel({ baseUrl, disabled }: Props) {
               <div>
                 <span className="text-[10px] text-gray-500 block uppercase tracking-wide font-bold mb-1">Primary Diagnosis</span>
                 <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-extrabold text-gray-900">{result.primary.label}</span>
-                    <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${result.primary.confidence > 0.8 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {(result.primary.confidence * 100).toFixed(1)}%
-                    </span>
+                  <span className="text-2xl font-extrabold text-gray-900">{result.primary.label}</span>
+                  <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${result.primary.confidence > 0.8 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {(result.primary.confidence * 100).toFixed(1)}%
+                  </span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1 font-mono">Rule: {result.primary.rule}</div>
               </div>
@@ -184,21 +184,21 @@ export default function SuperclassPanel({ baseUrl, disabled }: Props) {
                     return (
                       <tr key={key} className={isHigh ? "bg-blue-50/30" : "hover:bg-gray-50"}>
                         <td className="text-left font-bold py-2 px-3 text-gray-700">{key}</td>
-                        <td className="py-2 px-3 text-gray-500 font-mono">{thresh.toFixed(2)}</td>
-                        <td className={`py-2 px-3 font-mono ${isHigh ? 'font-bold text-blue-700' : 'text-gray-600'}`}>{val.toFixed(3)}</td>
-                        <td className="py-2 px-3 text-gray-400 font-mono">{(result.sources.cnn[k]).toFixed(3)}</td>
-                        <td className="py-2 px-3 text-gray-400 font-mono">{result.sources.xgb ? result.sources.xgb[k].toFixed(3) : '-'}</td>
+                        <td className="py-2 px-3 text-gray-500 font-mono">{(thresh || 0.5).toFixed(2)}</td>
+                        <td className={`py-2 px-3 font-mono ${isHigh ? 'font-bold text-blue-700' : 'text-gray-600'}`}>{(val || 0).toFixed(3)}</td>
+                        <td className="py-2 px-3 text-gray-400 font-mono">{(result.sources.cnn?.[k] || 0).toFixed(3)}</td>
+                        <td className="py-2 px-3 text-gray-400 font-mono">{result.sources.xgb && result.sources.xgb[k] !== undefined ? result.sources.xgb[k].toFixed(3) : '-'}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-            
+
             {/* Version Info */}
             <div className="text-[10px] text-gray-400 bg-gray-50 p-2 rounded border border-gray-100 font-mono flex justify-between">
               <span>v{result.versions.api_version}</span>
-              <span>Hash: {result.versions.model_hash.substring(0,8)}</span>
+              <span>Hash: {result.versions.model_hash.substring(0, 8)}</span>
             </div>
 
             {/* XAI Section */}

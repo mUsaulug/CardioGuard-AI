@@ -10,7 +10,7 @@ from torch import nn
 
 @dataclass
 class ECGCNNConfig:
-    \"\"\"Configuration for ECGCNN.\"\"\"
+    """Configuration for ECGCNN."""
 
     in_channels: int = 12
     num_filters: int = 64

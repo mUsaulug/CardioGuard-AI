@@ -106,7 +106,12 @@ class UnifiedExplainer:
         if not shap_result:
             return ["No significant feature contribution."]
             
+        if "error" in shap_result:
+            return [f"Feature analysis unavailable: {shap_result['error']}"]
+
         for cls, result in shap_result.items():
+            if not isinstance(result, dict):
+                continue
             # Get feature importance from SHAP values
             shap_values = result.get("shap_values", [])
             # In a real scenario, we map feature indices to names here

@@ -376,33 +376,57 @@ def predict(
         # 5. Visualization (Optional)
         # 5. Visualization (Optional)
         if save_plot:
-            from src.xai.visualize import plot_12lead_gradcam, plot_ecg_with_localization
-            
-            if gradcam_res:
-                plot_12lead_gradcam(
-                    signal, 
-                    gradcam_res, 
-                    save_plot, 
-                    title=f"Prediction: {primary_label} ({primary_confidence:.2f})"
-                )
+            try:
+                # UNIFIED VISUALIZATION: Use the same comprehensive report generator as Localization
+                from src.xai.visualize import generate_xai_report_png
                 
-            if localization_result:
-                # Save as separate file: original_name_loc.png
-                loc_plot_path = save_plot.parent / f"{save_plot.stem}_loc{save_plot.suffix}"
-                plot_ecg_with_localization(
-                    signal,
-                    localization_result,
-                    loc_plot_path,
-                    title=f"MI Localization: {primary_label}"
+                # 1. Prepare SHAP Features List
+                shap_features = []
+                if explanation_result and "raw_shap" in explanation_result:
+                    # Get SHAP for the primary label
+                    primary_shap = explanation_result["raw_shap"].get(primary_label, {})
+                    if isinstance(primary_shap, dict):
+                        # Convert to list format expected by visualizer
+                        for feat in primary_shap.get("top_features", []):
+                            shap_features.append({
+                                "feature_idx": feat.get("feature", "Unknown"),
+                                "shap_value": feat.get("importance", 0)
+                            })
+
+                # 2. Prepare Grad-CAM (Primary Label Only)
+                primary_gradcam = gradcam_res.get(primary_label) if gradcam_res else None
+
+                # 3. Generate Unified PNG Report
+                generate_xai_report_png(
+                    signal=signal,
+                    combined_heatmap=primary_gradcam,
+                    shap_features=shap_features,
+                    sanity_metrics=explanation_result.get("sanity_check", {}),
+                    prediction={"pred_class": primary_label, "pred_proba": primary_confidence},
+                    output_path=save_plot,
+                    sampling_rate=100
                 )
+                print(f"Explanation plot saved to {save_plot}")
+
+            except Exception as e:
+                print(f"Warning: Could not save plot: {e}")
+                import traceback
+                traceback.print_exc()
 
     # Write manifest.json if explain=True and run_dir provided
     if explain and run_dir:
+        sanity_res = None
+        if isinstance(explanation_result, dict):
+            sanity_res = explanation_result.get("sanity_check")
+        else:
+            print(f"DEBUGGING ERROR: explanation_result is not dict! Type: {type(explanation_result)}")
+            print(f"DEBUGGING ERROR: Content: {explanation_result}")
+
         _write_manifest(
             run_dir=run_dir,
             sample_id=sample_id,
             explanation_result=explanation_result,
-            sanity_result=explanation_result.get("sanity_check") if explanation_result else None,
+            sanity_result=sanity_res,
         )
     
     return {
