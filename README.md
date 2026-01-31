@@ -1,39 +1,40 @@
 # CardioGuard-AI
 
-**Açıklanabilir Yapay Zeka Destekli 12 Derivasyonlu EKG Analiz Platformu**
+**Aciklanabilir Yapay Zeka Destekli 12 Derivasyonlu EKG Analiz Platformu**
 
-Çoklu Etiketli Kardiyak Patoloji Tespiti | MI Lokalizasyonu | Grad-CAM ve SHAP Açıklamaları
+Coklu Etiketli Kardiyak Patoloji Tespiti | MI Lokalizasyonu | Grad-CAM ve SHAP Aciklamalari
 
 ---
 
-## Proje Hakkında
+## Proje Hakkinda
 
-CardioGuard-AI, 12 derivasyonlu EKG sinyallerini analiz ederek kardiyak anormallikleri tespit eden ileri düzey bir klinik karar destek sistemidir. Geleneksel "kara kutu" modellerinden farklı olarak, CardioGuard-AI Grad-CAM ısı haritaları ve SHAP özellik analizi aracılığıyla şeffaf ve yorumlanabilir tahminler sunar.
+CardioGuard-AI, 12 derivasyonlu EKG sinyallerini analiz ederek kardiyak anormallikleri tespit eden ileri duzey bir klinik karar destek sistemidir. Geleneksel "kara kutu" modellerinden farkli olarak, CardioGuard-AI Grad-CAM isi haritalari ve SHAP ozellik analizi araciligiyla seffaf ve yorumlanabilir tahminler sunar.
 
-### Temel Özellikler
+### Temel Ozellikler
 
-| Özellik | Açıklama |
+| Ozellik | Aciklama |
 |:--------|:---------|
-| Çoklu Etiket Sınıflandırma | MI, STTC, CD, HYP patolojilerinin eş zamanlı tespiti |
-| MI Lokalizasyonu | 5 anatomik bölgeye lokalizasyon (AMI, ASMI, ALMI, IMI, LMI) |
-| Hibrit Ensemble Mimarisi | CNN + XGBoost OVR, %50-%50 ağırlıklı ortalama |
-| Açıklanabilir Yapay Zeka | Grad-CAM zamansal odak + SHAP özellik katkıları |
-| Güvenlik Odaklı Tasarım | Başlangıçta doğrulama, girdi validasyonu, yol geçişi koruması |
-| Birleşik Raporlama | Klinik anlatı üretimi ile XAI artifact birleştirme |
+| Coklu Etiket Siniflandirma | MI, STTC, CD, HYP patolojilerinin es zamanli tespiti |
+| MI Lokalizasyonu | 5 anatomik bolgeye lokalizasyon (AMI, ASMI, ALMI, IMI, LMI) |
+| Hibrit Ensemble Mimarisi | CNN + XGBoost OVR, %50-%50 agirlikli ortalama |
+| Aciklanabilir Yapay Zeka | Grad-CAM zamansal odak + SHAP ozellik katkilari |
+| Consistency Guard | Superclass ve Binary MI modelleri arasinda tutarlilik kontrolu |
+| Guvenlik Odakli Tasarim | Fail-closed baslangic, girdi validasyonu, yol gecisi korumasi |
+| Birlesik Raporlama | Klinik anlati uretimi ile XAI artifact birlestirme |
 
 ---
 
-## Teknoloji Yığını
+## Teknoloji Yigini
 
-| Kategori | Teknoloji | Sürüm |
+| Kategori | Teknoloji | Surum |
 |:---------|:----------|:------|
 | Backend | Python | 3.10+ |
-| Derin Öğrenme | PyTorch | 2.x |
+| Derin Ogrenme | PyTorch | 2.x |
 | API Framework | FastAPI | 0.100+ |
 | Gradient Boosting | XGBoost | OVR |
-| Frontend Framework | React | 19 |
-| Frontend Dili | TypeScript | 5.8 |
-| Build Tool | Vite | 6.2 |
+| Frontend Framework | React | 19.2.4 |
+| Frontend Dili | TypeScript | 5.8.2 |
+| Build Tool | Vite | 6.2.0 |
 
 ---
 
@@ -66,135 +67,113 @@ CardioGuard-AI, 12 derivasyonlu EKG sinyallerini analiz ederek kardiyak anormall
 
 ---
 
-## Veri Akisi Diyagrami
+## Veri Akisi
 
 ```
 +-------------------+
-|                   |
 |   EKG YUKLEME     |
 |   (.npy / .npz)   |
-|                   |
 +---------+---------+
           |
           v
 +---------+---------+
-|                   |
 |   VALIDASYON      |
 |   (Format, Boyut) |
-|                   |
 +---------+---------+
           |
           v
 +---------+---------+
-|                   |
 |   ON ISLEME       |
 |   (12, T) format  |
-|                   |
 +---------+---------+
           |
           v
 +---------+---------+
-|                   |
 |   CNN MODELI      |
 |   (Superclass)    |
-|                   |
 +---------+---------+
           |
           +------------------+
           |                  |
           v                  v
 +---------+---------+   +----+----+
-|                   |   |         |
 |   CNN OLASILIK    |   | EMBEDDING|
 |   (4 sinif)       |   | (64 dim) |
-|                   |   |         |
 +---------+---------+   +----+----+
           |                  |
           |                  v
           |         +--------+--------+
-          |         |                 |
           |         |   XGBOOST OVR   |
           |         |   (4 classifier)|
-          |         |                 |
           |         +--------+--------+
           |                  |
           v                  v
 +---------+------------------+--------+
-|                                     |
 |            ENSEMBLE                 |
 |     (0.5 * CNN + 0.5 * XGBoost)    |
-|                                     |
-+---------+---------+-----------------+
-          |
-          v
-+---------+---------+
-|                   |
-|   ESIK UYGULAMA   |
-|   (Per-class)     |
-|                   |
-+---------+---------+
-          |
-          v
-+---------+---------+
-|                   |
-|  MI TESPIT EDILDI |
-|       MI?         |
-+---------+---------+
-          |
-    +-----+-----+
-    |           |
-   EVET       HAYIR
-    |           |
-    v           |
-+---+---+       |
-|       |       |
-| LOKAL.|       |
-| MODEL |       |
-|       |       |
-+---+---+       |
-    |           |
-    +-----+-----+
-          |
-          v
-+---------+---------+
-|                   |
-|  explain=true?    |
-|                   |
-+---------+---------+
-          |
-    +-----+-----+
-    |           |
-   EVET       HAYIR
-    |           |
-    v           |
-+---+---+       |
-|       |       |
-|GRAD-CAM|       |
-| SHAP  |       |
-|UNIFIED|       |
-|       |       |
-+---+---+       |
-    |           |
-    +-----+-----+
-          |
-          v
-+---------+---------+
-|                   |
-|   JSON YANIT      |
-|   (Tahmin+XAI)    |
-|                   |
-+-------------------+
++----------------+--------------------+
+                 |
+                 v
++----------------+--------------------+
+|        CONSISTENCY GUARD            |
+|  (Superclass MI vs Binary MI)       |
+|  AGREE_MI / AGREE_NO_MI / REVIEW    |
++----------------+--------------------+
+                 |
+                 v
++----------------+--------------------+
+|          ESIK UYGULAMA              |
+|          (Per-class)                |
++----------------+--------------------+
+                 |
+                 v
++----------------+--------------------+
+|         MI TESPIT EDILDI?           |
++----------------+--------------------+
+          |                |
+         EVET            HAYIR
+          |                |
+          v                |
++--------+--------+        |
+| LOKALIZASYON    |        |
+| MODEL (5 bolge) |        |
++--------+--------+        |
+          |                |
+          +-------+--------+
+                  |
+                  v
++----------------+--------------------+
+|          explain=true?              |
++----------------+--------------------+
+          |                |
+         EVET            HAYIR
+          |                |
+          v                |
++--------+--------+        |
+| GRAD-CAM        |        |
+| SHAP            |        |
+| UNIFIED         |        |
+| EXPLAINER       |        |
++--------+--------+        |
+          |                |
+          +-------+--------+
+                  |
+                  v
++----------------+--------------------+
+|           JSON YANIT                |
+|   (Tahmin + XAI + Consistency)      |
++-------------------------------------+
 ```
 
 ---
 
 ## Model Performansi
 
-PTB-XL veri seti üzerinde eğitilmiş ve doğrulanmıştır (21,837 EKG kaydı, 18,885 hasta).
+PTB-XL veri seti uzerinde egitilmis ve dogrulanmistir (21,837 EKG kaydi, 18,885 hasta).
 
 ### Genel Metrikler
 
-| Metrik | Değer |
+| Metrik | Deger |
 |:-------|:------|
 | Macro AUROC | 0.8998 |
 | Macro AUPRC | 0.7278 |
@@ -202,24 +181,14 @@ PTB-XL veri seti üzerinde eğitilmiş ve doğrulanmıştır (21,837 EKG kaydı,
 | Micro F1 | 0.6420 |
 | Hamming Accuracy | %80.51 |
 
-### Sınıf Bazlı Performans
+### Sinif Bazli Performans
 
-| Sınıf | Açıklama | AUROC | AUPRC | F1 | Destek |
+| Sinif | Aciklama | AUROC | AUPRC | F1 | Destek |
 |:------|:---------|:-----:|:-----:|:---:|:------:|
-| MI | Miyokard Enfarktüsü | 0.9022 | 0.7795 | 0.6933 | 550 |
-| STTC | ST/T Değişikliği | 0.9193 | 0.7497 | 0.6638 | 506 |
-| CD | İletim Bozukluğu | 0.8923 | 0.7738 | 0.6794 | 496 |
+| MI | Miyokard Enfarktusu | 0.9022 | 0.7795 | 0.6933 | 550 |
+| STTC | ST/T Degisikligi | 0.9193 | 0.7497 | 0.6638 | 506 |
+| CD | Iletim Bozuklugu | 0.8923 | 0.7738 | 0.6794 | 496 |
 | HYP | Hipertrofi | 0.8805 | 0.6201 | 0.4844 | 261 |
-
-### CNN ve XGBoost Karşılaştırması
-
-| Sınıf | CNN AUROC | XGB AUROC | Fark | Kazanan |
-|:------|:---------:|:---------:|:----:|:--------|
-| MI | 0.9022 | 0.9024 | +0.0002 | XGB |
-| STTC | 0.9193 | 0.9218 | +0.0025 | XGB |
-| CD | 0.8923 | 0.8881 | -0.0042 | CNN |
-| HYP | 0.8805 | 0.8868 | +0.0063 | XGB |
-| Macro | 0.8986 | 0.8998 | +0.0012 | XGB |
 
 ---
 
@@ -227,37 +196,37 @@ PTB-XL veri seti üzerinde eğitilmiş ve doğrulanmıştır (21,837 EKG kaydı,
 
 ### Gereksinimler
 
-| Gereksinim | Minimum Sürüm |
+| Gereksinim | Minimum Surum |
 |:-----------|:--------------|
 | Python | 3.10+ |
 | Node.js | 18+ |
-| CUDA | Opsiyonel (GPU hızlandırma için) |
+| CUDA | Opsiyonel (GPU hizlandirma icin) |
 
-### Adım 1: Depoyu Klonlama
+### Adim 1: Depoyu Klonlama
 
 ```bash
 git clone https://github.com/kullanici/CardioGuard-AI.git
 cd CardioGuard-AI
 ```
 
-### Adım 2: Python Ortamı Kurulumu
+### Adim 2: Python Ortami Kurulumu
 
 ```bash
-# Sanal ortam oluşturma
+# Sanal ortam olusturma
 python -m venv .venv
 
-# Sanal ortamı aktifleştirme (Windows)
+# Sanal ortami aktiflestirme (Windows)
 .venv\Scripts\activate
 
-# Sanal ortamı aktifleştirme (Linux/Mac)
+# Sanal ortami aktiflestirme (Linux/Mac)
 source .venv/bin/activate
 
-# Bağımlılıkları yükleme
+# Bagimliliklari yukleme
 pip install -r requirements.txt
 pip install fastapi uvicorn
 ```
 
-### Adım 3: Frontend Kurulumu
+### Adim 3: Frontend Kurulumu
 
 ```bash
 cd frontend
@@ -267,49 +236,50 @@ cd ..
 
 ---
 
-## Uygulamayı Çalıştırma
+## Uygulamayi Calistirma
 
-### Backend API Başlatma
+### Backend API Baslatma
 
 ```bash
 uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Beklenen çıktı:
+Beklenen cikti:
 
 ```
 Validating checkpoints...
 Checkpoint validation passed!
 Superclass model loaded
 Localization model loaded
-XGBoost models loaded: 4 classifiers
+Binary MI model loaded (for consistency guard)
+XGBoost feature schema loaded: 64 features
 Models loaded: Superclass=OK, Localization=True, XGB=4
 INFO: Uvicorn running on http://0.0.0.0:8000
 ```
 
-### Frontend Başlatma
+### Frontend Baslatma
 
-Yeni bir terminal açın:
+Yeni bir terminal acin:
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-Beklenen çıktı:
+Beklenen cikti:
 
 ```
 VITE v6.2.0 ready in 500ms
 Local: http://localhost:5173/
 ```
 
-### Tarayıcıda Açma
+### Tarayicida Acma
 
-Tarayıcınızda `http://localhost:5173` adresine gidin ve EKG dosyası yükleyin (.npy veya .npz formatında).
+Tarayicinizda `http://localhost:5173` adresine gidin ve EKG dosyasi yukleyin (.npy veya .npz formatinda).
 
 ---
 
-## Proje Yapısı
+## Proje Yapisi
 
 ```
 CardioGuard-AI/
@@ -317,66 +287,66 @@ CardioGuard-AI/
 |-- src/                              # Python kaynak kodu
 |   |
 |   |-- backend/                      # FastAPI REST API
-|   |   |-- main.py                   # API endpoint'leri (614 satır)
+|   |   |-- main.py                   # API endpoint'leri (653 satir)
 |   |   +-- __init__.py
 |   |
-|   |-- models/                       # Sinir ağı tanımları
-|   |   |-- cnn.py                    # ECGBackbone, ECGCNN (153 satır)
-|   |   +-- xgb.py                    # XGBoost yardımcıları
+|   |-- models/                       # Sinir agi tanimlari
+|   |   |-- cnn.py                    # ECGBackbone, ECGCNN
+|   |   +-- xgb.py                    # XGBoost yardimlari
 |   |
-|   |-- pipeline/                     # İş mantığı
+|   |-- pipeline/                     # Is mantigi
 |   |   |
-|   |   |-- inference/                # Çıkarım scriptleri
-|   |   |   |-- run_inference_superclass.py    # Ana orkestrator (591 satır)
+|   |   |-- inference/                # Cikarim scriptleri
+|   |   |   |-- run_inference_superclass.py    # Ana orkestrator (634 satir)
 |   |   |   |-- run_inference_localization.py  # MI lokalizasyonu
 |   |   |   |-- run_inference_binary.py        # Binary MI
-|   |   |   +-- consistency_guard.py           # Tutarlılık kontrolü
+|   |   |   +-- consistency_guard.py           # Tutarlilik kontrolu (ENTEGRE)
 |   |   |
-|   |   |-- training/                 # Eğitim scriptleri
+|   |   |-- training/                 # Egitim scriptleri
 |   |   |   |-- train_superclass_cnn.py
 |   |   |   |-- train_superclass_xgb_ovr.py
 |   |   |   +-- train_mi_localization.py
 |   |   |
-|   |   +-- evaluation/               # Değerlendirme
+|   |   +-- evaluation/               # Degerlendirme
 |   |       +-- run_comprehensive_test.py
 |   |
-|   |-- xai/                          # Açıklanabilir AI modülleri
-|   |   |-- gradcam.py                # Grad-CAM implementasyonu (188 satır)
-|   |   |-- shap_ovr.py               # XGBoost için SHAP
-|   |   |-- unified.py                # Birleşik açıklayıcı (159 satır)
-|   |   |-- sanity.py                 # XAI kalite kontrolü
-|   |   +-- visualize.py              # Görselleştirme fonksiyonları
+|   |-- xai/                          # Aciklanabilir AI modulleri
+|   |   |-- gradcam.py                # Grad-CAM implementasyonu
+|   |   |-- shap_ovr.py               # XGBoost icin SHAP
+|   |   |-- unified.py                # Birlesik aciklayici
+|   |   |-- sanity.py                 # XAI kalite kontrolu
+|   |   +-- visualize.py              # Gorsellestirme fonksiyonlari
 |   |
-|   |-- contracts/                    # Veri kontratları
-|   |   +-- airesult_mapper.py        # Backend-Frontend dönüşümü
+|   |-- contracts/                    # Veri kontratlari
+|   |   +-- airesult_mapper.py        # Backend-Frontend donusumu
 |   |
-|   |-- data/                         # Veri yükleme
-|   |   +-- splits.py                 # Hasta bazlı split'ler
+|   |-- data/                         # Veri yukleme
+|   |   +-- splits.py                 # Hasta bazli split'ler
 |   |
-|   +-- utils/                        # Yardımcı modüller
-|       |-- model_loader.py           # Güvenli model yükleme
-|       |-- checkpoint_validation.py  # Checkpoint doğrulama
-|       +-- signal.py                 # Sinyal işleme
+|   +-- utils/                        # Yardimci moduller
+|       |-- model_loader.py           # Guvenli model yukleme
+|       |-- checkpoint_validation.py  # Checkpoint dogrulama
+|       +-- signal.py                 # Sinyal isleme
 |
 |-- frontend/                         # React 19 + Vite + TypeScript
 |   |-- index.html
-|   |-- index.tsx                     # React giriş noktası
+|   |-- index.tsx                     # React giris noktasi
 |   |-- package.json
 |   |-- vite.config.ts
 |   |-- tsconfig.json
 |   |
-|   |-- components/                   # React bileşenleri
-|   |   +-- (4 dosya)
+|   |-- components/                   # React bilesenleri
 |   |
-|   +-- lib/                          # Paylaşılan yardımcılar
+|   +-- lib/                          # Paylasilan yardilar
 |       |-- api.ts                    # API istemcisi
-|       +-- types.ts                  # TypeScript tip tanımları (100 satır)
+|       +-- types.ts                  # TypeScript tip tanimlari
 |
-|-- checkpoints/                      # Eğitilmiş model ağırlıkları
-|   |-- ecgcnn_superclass.pt          # Superclass CNN (~2.5 MB)
-|   +-- ecgcnn_localization.pt        # Lokalizasyon CNN
+|-- checkpoints/                      # Egitilmis model agirliklari
+|   |-- ecgcnn_superclass.pt          # Superclass CNN
+|   |-- ecgcnn_localization.pt        # Lokalizasyon CNN
+|   +-- ecgcnn.pt                     # Binary MI (Consistency Guard icin)
 |
-|-- logs/                             # Eğitim çıktıları
+|-- logs/                             # Egitim ciktilari
 |   |-- superclass_cnn/
 |   |   +-- training_results.json
 |   |
@@ -390,11 +360,11 @@ CardioGuard-AI/
 |       |-- scaler.joblib
 |       +-- feature_schema.json
 |
-|-- artifacts/                        # Konfigürasyonlar
-|   +-- thresholds_superclass.json    # Sınıf bazlı eşikler
+|-- artifacts/                        # Konfigurasyonlar
+|   +-- thresholds_superclass.json    # Sinif bazli esikler
 |
-|-- reports/                          # Raporlar ve XAI çıktıları
-|   +-- xai/runs/                     # XAI artifact'ları
+|-- reports/                          # Raporlar ve XAI ciktilari
+|   +-- xai/runs/                     # XAI artifact'lari
 |       +-- {run_id}/
 |           |-- manifest.json
 |           |-- visuals/
@@ -402,42 +372,44 @@ CardioGuard-AI/
 |
 |-- tests/                            # Pytest test suite
 |   |-- test_consistency_guard.py
+|   |-- test_consistency_integration.py
 |   |-- test_airesult_mapper.py
 |   |-- test_checkpoint_validation.py
 |   |-- test_data.py
 |   |-- test_gradcam.py
 |   |-- test_xgb_pipeline.py
-|   +-- (diğer testler)
+|   +-- (diger testler)
 |
-|-- docs/                             # Dokümantasyon
+|-- docs/                             # Dokumantasyon
 |   |-- 00_repo_map.md
 |   |-- 01_architecture.md
 |   |-- 02_api_contracts.md
 |   |-- 03_inference_pipeline.md
 |   |-- 04_xai_and_artifacts.md
 |   |-- 05_frontend_integration.md
+|   |-- MASTER_SOURCE_OF_TRUTH.md
 |   +-- FINAL_TEKNIK_RAPOR_TR.md
 |
-|-- requirements.txt                  # Python bağımlılıkları
-|-- sample.npy                        # Örnek EKG sinyali
-+-- test_mi_sample.npz                # MI pozitif test örneği
+|-- requirements.txt                  # Python bagimliliklari
+|-- sample.npy                        # Ornek EKG sinyali
++-- test_mi_sample.npz                # MI pozitif test ornegi
 ```
 
 ---
 
-## API Referansı
+## API Referansi
 
 ### Endpoint Listesi
 
-| Metod | Yol | Açıklama | Hata Kodları |
-|:------|:----|:---------|:-------------|
-| POST | /predict/superclass | Çoklu etiket sınıflandırma | 400, 413, 500, 503 |
-| POST | /predict/mi-localization | MI anatomik lokalizasyonu | 400, 500 |
-| GET | /runs/{run_id}/{file_path} | XAI artifact sunumu | 400, 404 |
-| GET | /health | Sağlık kontrolü | - |
-| GET | /ready | Hazırlık kontrolü | - |
+| Metod | Yol | Aciklama |
+|:------|:----|:---------|
+| POST | /predict/superclass | Coklu etiket siniflandirma |
+| POST | /predict/mi-localization | MI anatomik lokalizasyonu |
+| GET | /runs/{run_id}/{file_path} | XAI artifact sunumu |
+| GET | /health | Saglik kontrolu |
+| GET | /ready | Hazirlik kontrolu |
 
-### Superclass Tahmin İsteği
+### Superclass Tahmin Istegi
 
 ```bash
 curl -X POST "http://localhost:8000/predict/superclass" \
@@ -446,20 +418,20 @@ curl -X POST "http://localhost:8000/predict/superclass" \
   -F "ensemble_weight=0.5"
 ```
 
-### İstek Parametreleri
+### Istek Parametreleri
 
-| Parametre | Tip | Zorunlu | Varsayılan | Açıklama |
+| Parametre | Tip | Zorunlu | Varsayilan | Aciklama |
 |:----------|:----|:-------:|:-----------|:---------|
-| file | UploadFile | Evet | - | EKG dosyası (.npy veya .npz) |
-| explain | bool | Hayır | false | XAI artifact üretimi |
-| ensemble_weight | float | Hayır | 0.5 | CNN/XGB ağırlığı (0.0-1.0) |
-| sanity_check | bool | Hayır | true | XAI kalite kontrolü |
+| file | UploadFile | Evet | - | EKG dosyasi (.npy veya .npz) |
+| explain | bool | Hayir | false | XAI artifact uretimi |
+| ensemble_weight | float | Hayir | 0.5 | CNN/XGB agirligi (0.0-1.0) |
+| sanity_check | bool | Hayir | false | XAI kalite kontrolu |
 
-### Yanıt Şeması
+### Ornek Yanit
 
 ```json
 {
-  "mode": "superclass",
+  "mode": "multilabel-superclass",
   
   "probabilities": {
     "MI": 0.85,
@@ -481,7 +453,7 @@ curl -X POST "http://localhost:8000/predict/superclass" \
   "primary": {
     "label": "MI",
     "confidence": 0.85,
-    "rule": "priority_order"
+    "rule": "MI-first-then-priority"
   },
   
   "sources": {
@@ -503,28 +475,22 @@ curl -X POST "http://localhost:8000/predict/superclass" \
     "run_dir": "reports/xai/runs/20260131_233000_abc123",
     "artifacts": [
       {
-        "type": "gradcam",
-        "name": "gradcam_heatmap.png",
-        "url": "/runs/20260131_233000_abc123/visuals/gradcam_heatmap.png",
+        "type": "report_png",
+        "name": "sample_report.png",
+        "url": "/runs/20260131_233000_abc123/visuals/sample_report.png",
         "mime": "image/png"
       },
       {
-        "type": "shap",
-        "name": "shap_summary.png",
-        "url": "/runs/20260131_233000_abc123/visuals/shap_summary.png",
-        "mime": "image/png"
-      },
-      {
-        "type": "narrative",
-        "name": "unified_report.md",
-        "url": "/runs/20260131_233000_abc123/text/unified_report.md",
+        "type": "narrative_md",
+        "name": "sample__narrative.md",
+        "url": "/runs/20260131_233000_abc123/text/sample__narrative.md",
         "mime": "text/markdown"
       }
     ],
     "sanity": {
       "status": "PASS",
-      "gradcam_variance": 0.15,
-      "peak_spread": 0.25
+      "passed_checks": 3,
+      "total_checks": 3
     }
   },
   
@@ -540,14 +506,40 @@ curl -X POST "http://localhost:8000/predict/superclass" \
 }
 ```
 
-### Hata Yanıtları
+---
 
-| Kod | Durum | Açıklama |
-|:----|:------|:---------|
-| 400 | Bad Request | Geçersiz dosya formatı veya parametre |
-| 413 | Payload Too Large | Dosya boyutu 10MB'ı aşıyor |
-| 500 | Internal Server Error | Tahmin sırasında hata |
-| 503 | Service Unavailable | Modeller yüklenmemiş |
+## Consistency Guard
+
+Sistem, Superclass MI ve Binary MI modelleri arasinda tutarlilik kontrolu yapar. Bu ozellik **tam entegre** durumundadir.
+
+### Calisma Mantigi
+
+1. Superclass modeli MI olasiligini hesaplar
+2. Binary MI modeli bagimsiz olarak MI olasiligini hesaplar
+3. Iki modelin kararlari karsilastirilir
+4. Sonuc yanita eklenir
+
+### Agreement Turleri
+
+| Agreement Type | Durum | Triage | Aciklama |
+|:---------------|:------|:-------|:---------|
+| AGREE_MI | Her iki model MI tespit etti | HIGH | Yuksek guvenle MI |
+| AGREE_NO_MI | Hicbiri MI tespit etmedi | LOW | Normal bulgu |
+| DISAGREE_TYPE_1 | Superclass MI+, Binary MI- | REVIEW | Inceleme gerekli |
+| DISAGREE_TYPE_2 | Superclass MI-, Binary MI+ | REVIEW | Inceleme gerekli |
+
+### Kod Entegrasyonu
+
+```
+run_inference_superclass.py:
+  Satir 32:  from src.pipeline.inference.consistency_guard import check_consistency
+  Satir 279-290: check_consistency() cagrisi
+  Satir 453: "consistency": consistency_result.to_dict()
+
+main.py:
+  Satir 207-214: Binary model yukleme
+  Satir 523: binary_model=state.binary_model parametresi
+```
 
 ---
 
@@ -559,344 +551,239 @@ curl -X POST "http://localhost:8000/predict/superclass" \
 Girdi: (batch, 12, T)
         |
         v
-+-------+-------+
-|  Conv1d       |  12 -> 64 kanal
-|  kernel=7     |  padding=3
-+-------+-------+
++------------------+
+|  Conv1d          |  12 -> 64 kanal, kernel=7
++------------------+
         |
         v
-+-------+-------+
-|  BatchNorm1d  |  64 kanal
-+-------+-------+
++------------------+
+|  BatchNorm1d     |  64 kanal
++------------------+
         |
         v
-+-------+-------+
-|     ReLU      |
-+-------+-------+
++------------------+
+|  ReLU            |
++------------------+
         |
         v
-+-------+-------+
-|   Dropout     |  p=0.3
-+-------+-------+
++------------------+
+|  Dropout         |  p=0.3
++------------------+
         |
         v
-+-------+-------+
-|               |
-| ResidualBlock |  x4 tekrar
-|   Conv1d(64)  |
-|   BatchNorm   |
-|   ReLU        |
-|   Skip Conn.  |
-|               |
-+-------+-------+
++------------------+
+| ResidualBlock x4 |
++------------------+
         |
         v
-+-------+-------+
-| AdaptiveAvg   |
-| Pool1d(1)     |
-+-------+-------+
++------------------+
+| AdaptiveAvgPool  |
++------------------+
         |
         v
-+-------+-------+
-|   Flatten     |  -> (batch, 64)
-+-------+-------+
++------------------+
+|  Flatten         |  -> (batch, 64) embedding
++------------------+
         |
         v
-+-------+-------+
-|  Linear(64,4) |  4 sınıf çıktı
-+-------+-------+
++------------------+
+|  Linear(64, 4)   |  4 sinif ciktisi
++------------------+
         |
         v
-+-------+-------+
-|   Sigmoid     |  Multi-label
-+-------+-------+
++------------------+
+|  Sigmoid         |  Multi-label olasilik
++------------------+
         |
         v
-Çıktı: (batch, 4)
-MI, STTC, CD, HYP olasılıkları
+Cikti: MI, STTC, CD, HYP olasililklari
 ```
 
-### CNN Konfigürasyonu
-
-| Parametre | Değer |
-|:----------|:------|
-| Giriş Kanalları | 12 |
-| Filtre Sayısı | 64 |
-| Kernel Boyutu | 7 |
-| Dropout Oranı | 0.3 |
-| Epoch | 50 |
-| Batch Size | 64 |
-| Learning Rate | 0.001 |
-| Weight Decay | 0.0001 |
-| En İyi Epoch | 46 |
-
-### XGBoost OVR Yapısı
-
-Her sınıf için ayrı binary classifier eğitilmiştir:
+### Ensemble Formulu
 
 ```
-CNN Backbone Çıktısı
-        |
-        v
-+-------+-------+
-|               |
-| StandardScaler|  64-dim özellik
-|               |
-+-------+-------+
-        |
-        +-------+-------+-------+
-        |       |       |       |
-        v       v       v       v
-     +--+--+ +--+--+ +--+--+ +--+--+
-     | MI  | |STTC | | CD  | | HYP |
-     | XGB | | XGB | | XGB | | XGB |
-     +--+--+ +--+--+ +--+--+ +--+--+
-        |       |       |       |
-        v       v       v       v
-     +--+--+ +--+--+ +--+--+ +--+--+
-     |Iso- | |Iso- | |Iso- | |Iso- |
-     |tonic| |tonic| |tonic| |tonic|
-     |Calib| |Calib| |Calib| |Calib|
-     +--+--+ +--+--+ +--+--+ +--+--+
-        |       |       |       |
-        +-------+-------+-------+
-                |
-                v
-        Kalibre Olasılıklar
+ensemble_prob[sinif] = 0.5 * CNN_prob[sinif] + 0.5 * XGB_prob[sinif]
 ```
 
-### Ensemble Formülü
+### NORM Sinifi Turetimi
 
-```
-ensemble_prob[sınıf] = 0.5 × CNN_prob[sınıf] + 0.5 × XGB_prob[sınıf]
-```
-
-### NORM Sınıfı Türetimi
-
-NORM sınıfı doğrudan tahmin edilmez, türetilir:
+NORM sinifi dogrudan tahmin edilmez, turetilir:
 
 ```
 NORM_prob = 1.0 - max(MI_prob, STTC_prob, CD_prob, HYP_prob)
 ```
 
-### Birincil Etiket Seçimi
+### Birincil Etiket Secimi (Priority Rule)
 
-Klinik öncelik sırasına göre seçilir:
-
-| Öncelik | Sınıf | Gerekçe |
+| Oncelik | Sinif | Gerekce |
 |:-------:|:------|:--------|
-| 1 | MI | Hayatı tehdit eden acil durum |
-| 2 | STTC | İskemi belirtisi olabilir |
-| 3 | CD | İletim defekti, blok riski |
+| 1 | MI | Hayati tehdit eden acil durum |
+| 2 | STTC | Iskemi belirtisi olabilir |
+| 3 | CD | Iletim defekti, blok riski |
 | 4 | HYP | Kronik durum |
 | 5 | NORM | Patoloji tespit edilmedi |
-
-### Eşik Değerleri
-
-| Sınıf | Optimizasyon Metodu | Optimize Değer | Üretim Değeri |
-|:------|:--------------------|:--------------:|:-------------:|
-| MI | F-beta (beta=2.0) | 0.01 | 0.5 |
-| STTC | Youden's J | 0.418 | 0.5 |
-| CD | Youden's J | 0.420 | 0.5 |
-| HYP | Youden's J | 0.258 | 0.5 |
 
 ---
 
 ## XAI Pipeline
 
-### Açıklanabilirlik Bileşenleri
+### Bilesenler
 
-| Bileşen | Dosya | Açıklama |
+| Bilesen | Dosya | Aciklama |
 |:--------|:------|:---------|
-| Grad-CAM | gradcam.py | Zamansal saliency haritaları |
-| SHAP | shap_ovr.py | XGBoost özellik katkıları |
-| Unified Explainer | unified.py | Birleşik klinik anlatı |
-| Sanity Checker | sanity.py | XAI kalite kontrolü |
+| Grad-CAM | gradcam.py | Zamansal saliency haritalari |
+| SHAP | shap_ovr.py | XGBoost ozellik katkilari |
+| Unified Explainer | unified.py | Birlesik klinik anlati |
+| Sanity Checker | sanity.py | XAI kalite kontrolu |
 | Visualize | visualize.py | 12-lead plot, heatmap overlay |
 
 ### Sanity Check Kriterleri
 
-| Kontrol | Eşik | Anlam |
+| Kontrol | Esik | Anlam |
 |:--------|:-----|:------|
-| gradcam_variance | > 0.01 | Model belirli bölgelere odaklanıyor |
-| peak_spread | > 0.1 | Derivasyonlar farklı ağırlıkta |
-
-### Manifest Yapısı
-
-Her tahmin için oluşturulan manifest.json:
-
-| Alan | Tip | Açıklama |
-|:-----|:----|:---------|
-| run_id | string | Benzersiz çalışma tanımlayıcısı |
-| created_at | string | ISO 8601 timestamp |
-| task | string | Görev tipi (multiclass, localization) |
-| sample_id | string | Örnek tanımlayıcısı |
-| artifacts | array | Artifact listesi [{type, path, mime}] |
-| sanity | string | Sanity check sonucu (PASS/FAIL) |
-| highlights | array | Aktivasyon pencere koordinatları |
-
----
-
-## Consistency Guard
-
-Superclass MI ve Binary MI modelleri arasındaki tutarlılığı kontrol eder:
-
-| Agreement Type | Durum | Triage |
-|:---------------|:------|:-------|
-| AGREE_MI | Her iki model MI tespit etti | HIGH |
-| AGREE_NO_MI | Hiçbiri MI tespit etmedi | LOW |
-| DISAGREE_TYPE_1 | Superclass MI+, Binary MI- | REVIEW |
-| DISAGREE_TYPE_2 | Superclass MI-, Binary MI+ | REVIEW |
+| gradcam_variance | > 0.01 | Model belirli bolgelere odaklaniyor |
+| peak_spread | > 0.1 | Derivasyonlar farkli agirlikta |
 
 ---
 
 ## Test
 
-### Test Çalıştırma
+### Test Calistirma
 
 ```bash
-# Tüm testleri çalıştır
+# Tum testleri calistir
 pytest tests/ -v
 
-# Belirli bir testi çalıştır
+# Belirli bir testi calistir
 pytest tests/test_consistency_guard.py -v
 
-# Coverage ile çalıştır
-pytest tests/ --cov=src --cov-report=html
+# Consistency integration testi
+pytest tests/test_consistency_integration.py -v
 ```
 
-### Test Kapsamı
+### Test Kapsami
 
-| Test Dosyası | Kapsam |
+| Test Dosyasi | Kapsam |
 |:-------------|:-------|
-| test_consistency_guard.py | Tutarlılık kontrol mantığı |
-| test_airesult_mapper.py | Yanıt dönüştürme |
-| test_checkpoint_validation.py | Model doğrulama |
-| test_data.py | Veri yükleme, split'ler |
-| test_gradcam.py | Grad-CAM üretimi |
-| test_xgb_pipeline.py | XGBoost çıkarımı |
-| test_artifacts.py | XAI artifact üretimi |
-| test_xai_visualization.py | Görselleştirme |
+| test_consistency_guard.py | Tutarlilik kontrol mantigi (177 satir, 10 test) |
+| test_consistency_integration.py | Pipeline entegrasyonu (4 test) |
+| test_airesult_mapper.py | Yanit donusturme |
+| test_checkpoint_validation.py | Model dogrulama |
+| test_data.py | Veri yukleme, split'ler |
+| test_gradcam.py | Grad-CAM uretimi |
+| test_xgb_pipeline.py | XGBoost cikarimi |
+| test_artifacts.py | XAI artifact uretimi |
 | test_model.py | Model instantiation |
 
 ---
 
 ## Veri Seti
 
-### PTB-XL Detayları
+### PTB-XL Detaylari
 
-| Özellik | Değer |
+| Ozellik | Deger |
 |:--------|:------|
-| Toplam Kayıt | 21,837 |
-| Hasta Sayısı | 18,885 |
-| Örnekleme Frekansı | 100 Hz / 500 Hz |
-| Kayıt Süresi | 10 saniye |
+| Toplam Kayit | 21,837 |
+| Hasta Sayisi | 18,885 |
+| Ornekleme Frekansi | 100 Hz / 500 Hz |
+| Kayit Suresi | 10 saniye |
 | Derivasyon | 12-lead standart |
 
-### Split Protokolü
+### Split Protokolu
 
-| Split | Fold'lar | Oran | Örnek Sayısı |
+| Split | Fold'lar | Oran | Ornek Sayisi |
 |:------|:---------|:----:|:------------:|
 | Train | 1-8 | %80 | 17,388 |
 | Validation | 9 | %10 | 2,180 |
 | Test | 10 | %10 | 2,180 |
 
-### Veri Sızıntısı Önleme
+### Veri Sizintisi Onleme
 
-Hasta bazlı split uygulanmıştır. `verify_no_patient_leakage()` fonksiyonu aynı hastanın birden fazla split'te görünmediğini doğrular.
+Hasta bazli split uygulanmistir. `verify_no_patient_leakage()` fonksiyonu ayni hastanin birden fazla split'te gorunmedigini dogrular.
 
 ---
 
-## Dokümantasyon
+## Dokumantasyon
 
-Detaylı dokümantasyon `docs/` klasöründe mevcuttur:
+Detayli dokumantasyon `docs/` klasorunde mevcuttur:
 
-| Dosya | İçerik |
+| Dosya | Icerik |
 |:------|:-------|
-| 00_repo_map.md | Depo yapısı ve keşif |
+| 00_repo_map.md | Depo yapisi ve kesif |
 | 01_architecture.md | Sistem mimarisi (C4 model) |
-| 02_api_contracts.md | API spesifikasyonları |
-| 03_inference_pipeline.md | Detaylı pipeline analizi |
-| 04_xai_and_artifacts.md | XAI implementasyon detayları |
+| 02_api_contracts.md | API spesifikasyonlari |
+| 03_inference_pipeline.md | Detayli pipeline analizi |
+| 04_xai_and_artifacts.md | XAI implementasyon detaylari |
 | 05_frontend_integration.md | Frontend-backend entegrasyonu |
-| 06_quality_tests_and_repro.md | Test ve tekrarlanabilirlik |
-| FINAL_TEKNIK_RAPOR_TR.md | Kapsamlı teknik rapor |
-| MASTER_SOURCE_OF_TRUTH.md | Tüm sistem dokümantasyonu |
+| MASTER_SOURCE_OF_TRUTH.md | Tum sistem dokumantasyonu |
+| FINAL_TEKNIK_RAPOR_TR.md | Kapsamli teknik rapor |
 
 ---
 
-## Bağımlılıklar
+## Bagimliliklar
 
-### Python Bağımlılıkları
+### Python Bagimliliklari
 
-| Paket | Amaç |
+| Paket | Amac |
 |:------|:-----|
-| numpy | Sayısal hesaplamalar |
-| pandas | Veri manipülasyonu |
-| torch | PyTorch derin öğrenme |
-| scikit-learn | ML yardımcıları, kalibrasyon |
+| numpy | Sayisal hesaplamalar |
+| pandas | Veri manipulasyonu |
+| torch | PyTorch derin ogrenme |
+| scikit-learn | ML yardimcilari, kalibrasyon |
 | xgboost | Gradient boosting |
-| wfdb | PhysioNet veri formatı |
-| shap | SHAP değerleri |
-| matplotlib | Görselleştirme |
+| wfdb | PhysioNet veri formati |
+| shap | SHAP degerleri |
+| matplotlib | Gorsellestirme |
 | scipy | Bilimsel hesaplama |
 | fastapi | REST API framework |
 | uvicorn | ASGI sunucu |
-| tabulate | Tablo formatlama |
-| tqdm | İlerleme çubuğu |
 
-### Node.js Bağımlılıkları
+### Node.js Bagimliliklari
 
-| Paket | Sürüm | Amaç |
+| Paket | Surum | Amac |
 |:------|:------|:-----|
 | react | 19.2.4 | UI framework |
 | react-dom | 19.2.4 | React DOM |
 | vite | 6.2.0 | Build tool |
-| typescript | 5.8.2 | Tip güvenliği |
+| typescript | 5.8.2 | Tip guvenligi |
 
 ---
 
-## Yol Haritası
+## Yol Haritasi
 
-| Sürüm | Dönem | Hedef |
+| Surum | Donem | Hedef |
 |:------|:------|:------|
-| v1.1 | Kısa Vade | Consistency Guard tam entegrasyonu |
-| v1.2 | Kısa Vade | Uzman onay arayüzü |
+| v1.1 | Tamamlandi | Consistency Guard entegrasyonu |
+| v1.2 | Kisa Vade | Uzman onay arayuzu |
 | v2.0 | Orta Vade | RAG entegrasyonu, belirsizlik tahmini |
 | v2.0 | Orta Vade | LLM ile otomatik klinik rapor |
-| v2.x | Uzun Vade | Gerçek zamanlı EKG streaming |
+| v2.x | Uzun Vade | Gercek zamanli EKG streaming |
 | v2.x | Uzun Vade | Kurumsal analitik dashboard |
 
 ---
 
-## Tıbbi Sorumluluk Reddi
+## Tibbi Sorumluluk Reddi
 
-**CardioGuard-AI yalnızca araştırma ve eğitim amaçlıdır.**
+**CardioGuard-AI yalnizca arastirma ve egitim amaclidir.**
 
-Bu sistem klinik ortamlarda bağımsız bir tanı aracı olarak kullanılmamalıdır. Tüm tahminler nitelikli sağlık profesyonelleri tarafından bağımsız olarak doğrulanmalıdır. Geliştiriciler, bu sistemin çıktılarına dayalı olarak alınan klinik kararlar için herhangi bir sorumluluk kabul etmez.
+Bu sistem klinik ortamlarda bagimsiz bir tani araci olarak kullanilmamalidir. Tum tahminler nitelikli saglik profesyonelleri tarafindan bagimsiz olarak dogrulanmalidir. Gelistiriciler, bu sistemin ciktilarina dayali olarak alinan klinik kararlar icin herhangi bir sorumluluk kabul etmez.
 
 ---
 
 ## Referanslar
 
-| Kaynak | Açıklama |
+| Kaynak | Aciklama |
 |:-------|:---------|
-| PTB-XL | PhysioNet üzerinde yayınlanan geniş EKG veri seti |
-| Grad-CAM | Selvaraju et al., "Grad-CAM: Visual Explanations from Deep Networks" |
+| PTB-XL | PhysioNet uzerinde yayinlanan genis EKG veri seti |
+| Grad-CAM | Selvaraju et al., "Visual Explanations from Deep Networks" |
 | SHAP | Lundberg ve Lee, "A Unified Approach to Interpreting Model Predictions" |
 
 ---
 
 ## Lisans
 
-Bu proje araştırma ve eğitim kullanımı için lisanslanmıştır.
+Bu proje arastirma ve egitim kullanimi icin lisanslanmistir.
 
 ---
 
-## İletişim
-
-Sorularınız veya geri bildirimleriniz için lütfen iletişime geçin.
-
----
-
-**CardioGuard-AI** - Yapay Zeka ve Klinik Karar Verme Arasında Köprü
+**CardioGuard-AI** - Yapay Zeka ve Klinik Karar Verme Arasinda Kopru
