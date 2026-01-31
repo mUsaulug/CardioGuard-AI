@@ -1,12 +1,23 @@
 """CardioGuard-AI XAI (Explainable AI) Module."""
 
 from src.xai.gradcam import GradCAM, generate_relevant_gradcam
-from src.xai.shap_xgb import (
-    explain_xgb,
-    get_top_features,
-    plot_shap_summary,
-    plot_shap_waterfall,
-)
+
+# Conditional import for SHAP-dependent components
+try:
+    from src.xai.shap_xgb import (
+        explain_xgb,
+        get_top_features,
+        plot_shap_summary,
+        plot_shap_waterfall,
+    )
+    _HAS_SHAP = True
+except ImportError:
+    _HAS_SHAP = False
+    explain_xgb = None
+    get_top_features = None
+    plot_shap_summary = None
+    plot_shap_waterfall = None
+
 from src.xai.visualize import (
     LEAD_NAMES,
     plot_ecg_with_localization,
@@ -28,7 +39,7 @@ __all__ = [
     # Grad-CAM
     "GradCAM",
     "generate_relevant_gradcam",
-    # SHAP
+    # SHAP (available only if shap package installed)
     "explain_xgb",
     "get_top_features",
     "plot_shap_summary",
@@ -56,3 +67,4 @@ __all__ = [
     "generate_run_id",
     "quick_report",
 ]
+

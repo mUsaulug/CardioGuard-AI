@@ -17,6 +17,7 @@ class GradCAM:
         self.target_layer = target_layer
         self.gradients: Optional[torch.Tensor] = None
         self.activations: Optional[torch.Tensor] = None
+        self._hook_handles: list = []
         self._register_hooks()
 
     def _register_hooks(self) -> None:
@@ -26,8 +27,15 @@ class GradCAM:
         def backward_hook(_, grad_input, grad_output):
             self.gradients = grad_output[0]
 
-        self.target_layer.register_forward_hook(forward_hook)
-        self.target_layer.register_full_backward_hook(backward_hook)
+        h1 = self.target_layer.register_forward_hook(forward_hook)
+        h2 = self.target_layer.register_full_backward_hook(backward_hook)
+        self._hook_handles = [h1, h2]
+
+    def cleanup(self) -> None:
+        """Remove registered hooks to prevent memory leaks."""
+        for handle in self._hook_handles:
+            handle.remove()
+        self._hook_handles = []
 
     def generate(self, inputs: torch.Tensor, class_index: int | None = None) -> np.ndarray:
         """Generate Grad-CAM heatmap for the given inputs."""

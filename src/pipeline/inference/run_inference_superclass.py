@@ -188,6 +188,8 @@ def predict(
     explain: bool = False,
     sanity_check: bool = False,
     save_plot: Optional[Path] = None,
+    run_dir: Optional[Path] = None,
+    sample_id: str = "sample",
 ) -> Dict[str, Any]:
     """
     Run multi-label prediction.
@@ -376,6 +378,15 @@ def predict(
                     title=f"MI Localization: {primary_label}"
                 )
 
+    # Write manifest.json if explain=True and run_dir provided
+    if explain and run_dir:
+        _write_manifest(
+            run_dir=run_dir,
+            sample_id=sample_id,
+            explanation_result=explanation_result,
+            sanity_result=explanation_result.get("sanity_check") if explanation_result else None,
+        )
+    
     return {
         "mode": "multilabel-superclass",
         "multi": {
@@ -395,10 +406,104 @@ def predict(
             "xgb": xgb_probs_dict if xgb_probs_dict else None,
             "ensemble": ensemble_probs,
         },
+        "run_id": run_dir.name if run_dir else None,
+        "run_dir": str(run_dir) if run_dir else None,
     }
 
 
+def _write_manifest(
+    run_dir: Path,
+    sample_id: str,
+    explanation_result: Optional[Dict[str, Any]],
+    sanity_result: Optional[Dict[str, Any]],
+) -> None:
+    """
+    Write manifest.json for XAI artifacts.
+    
+    This is the ONLY place where manifest is written.
+    Backend reads this file and serves artifacts.
+    """
+    from datetime import datetime
+    
+    # Ensure directories exist
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "visuals").mkdir(exist_ok=True)
+    (run_dir / "text").mkdir(exist_ok=True)
+    (run_dir / "tensors").mkdir(exist_ok=True)
+    
+    artifacts = []
+    
+    # Discover visuals that may have been created by save_plot
+    visuals_dir = run_dir / "visuals"
+    for png in visuals_dir.glob("*.png"):
+        artifacts.append({
+            "type": "report_png",
+            "path": f"visuals/{png.name}",
+            "mime": "image/png"
+        })
+    
+    # Write narrative if explanation exists
+    if explanation_result:
+        narrative = _generate_narrative(explanation_result, sample_id)
+        narrative_path = run_dir / "text" / f"{sample_id}__narrative.md"
+        with open(narrative_path, "w", encoding="utf-8") as f:
+            f.write(narrative)
+        artifacts.append({
+            "type": "narrative_md",
+            "path": f"text/{sample_id}__narrative.md",
+            "mime": "text/markdown"
+        })
+    
+    # Build manifest
+    manifest = {
+        "run_id": run_dir.name,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "task": "multiclass",
+        "sample_id": sample_id,
+        "artifacts": artifacts,
+        "sanity": sanity_result.get("overall") if sanity_result else None,
+        "highlights": explanation_result.get("top_windows") if explanation_result else None,
+    }
+    
+    manifest_path = run_dir / "manifest.json"
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+
+
+def _generate_narrative(explanation: Dict[str, Any], sample_id: str) -> str:
+    """Generate narrative markdown from explanation result."""
+    narrative = f"# XAI Explanation: {sample_id}\n\n"
+    
+    # SHAP info
+    shap_res = explanation.get("raw_shap", {})
+    if shap_res:
+        narrative += "## Top Features (SHAP)\n\n"
+        for cls, data in shap_res.items():
+            if isinstance(data, dict) and "top_features" in data:
+                narrative += f"### {cls}\n"
+                for feat in data.get("top_features", [])[:5]:
+                    narrative += f"- {feat.get('feature', '?')}: {feat.get('importance', 0):.4f}\n"
+                narrative += "\n"
+    
+    # Grad-CAM info
+    gradcam_res = explanation.get("raw_gradcam", {})
+    if gradcam_res:
+        narrative += "## Temporal Attention (Grad-CAM)\n\n"
+        narrative += f"Generated for classes: {list(gradcam_res.keys())}\n\n"
+    
+    # Sanity check
+    sanity = explanation.get("sanity_check", {})
+    if sanity:
+        overall = sanity.get("overall", {})
+        status = overall.get("status", "UNKNOWN")
+        narrative += f"## Sanity Check: {status}\n\n"
+        narrative += f"- Passed: {overall.get('passed_checks', 0)}/{overall.get('total_checks', 0)}\n"
+    
+    return narrative
+
+
 def main():
+
     parser = argparse.ArgumentParser(description="Multi-label Superclass Inference")
     parser.add_argument("--input", type=Path, required=True,
                         help="Path to ECG signal (.npz or .npy)")

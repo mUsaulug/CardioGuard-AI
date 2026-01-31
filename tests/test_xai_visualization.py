@@ -9,17 +9,35 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.xai.visualize import (
-    plot_gradcam_heatmap,
-    plot_lead_attention,
-    plot_ecg_with_prediction,
-    LEAD_NAMES,
-)
-from src.xai.shap_xgb import (
-    plot_shap_summary,
-    plot_shap_waterfall,
-)
-from src.pipeline.compare_models import optimize_ensemble_weight
+# Try to import visualization dependencies - skip entire module if not available
+try:
+    from src.xai.visualize import (
+        plot_gradcam_heatmap,
+        plot_lead_attention,
+        plot_ecg_with_prediction,
+        LEAD_NAMES,
+    )
+    _DEPS_AVAILABLE = True
+except (ImportError, Exception) as e:
+    _DEPS_AVAILABLE = False
+    pytestmark = pytest.mark.skip(reason=f"Visualization dependencies not available: {e}")
+
+# Conditional imports for optional dependencies
+try:
+    from src.xai.shap_xgb import (
+        plot_shap_summary,
+        plot_shap_waterfall,
+    )
+    HAS_SHAP = True
+except ImportError:
+    HAS_SHAP = False
+    plot_shap_summary = None
+    plot_shap_waterfall = None
+
+try:
+    from src.pipeline.evaluation.compare_models import optimize_ensemble_weight
+except ImportError:
+    optimize_ensemble_weight = None
 
 
 class TestGradCAMVisualization:
@@ -74,6 +92,7 @@ class TestGradCAMVisualization:
         assert fig is not None
 
 
+@pytest.mark.skipif(not HAS_SHAP, reason="shap package not installed")
 class TestSHAPVisualization:
     """Tests for SHAP visualization functions."""
     

@@ -3,9 +3,16 @@ CardioGuard-AI FastAPI Backend.
 
 REST API for multi-label superclass ECG prediction.
 
+ARCHITECTURE RULES:
+- Backend does NOT generate XAI artifacts
+- Pipeline predict() is the ONLY source of inference and XAI
+- Backend reads manifest.json from run_dir and returns artifact URLs
+- No inline CNN/XGB/ensemble code in endpoints
+
 Endpoints:
-- POST /predict/superclass - Multi-label prediction
-- POST /predict/mi-localization - MI localization (if MI detected)
+- POST /predict/superclass - Multi-label prediction (explain=true for XAI)
+- POST /predict/mi-localization - MI localization (explain=true for XAI)
+- GET /runs/{run_id}/{file_path} - Serve XAI artifacts
 - GET /health - Health check
 - GET /ready - Readiness check
 
@@ -17,6 +24,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import re
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -26,7 +34,16 @@ import numpy as np
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+
+
+# =============================================================================
+# Configuration
+# =============================================================================
+
+RUNS_DIR = Path("reports/xai/runs")
+RUN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 # =============================================================================
@@ -60,8 +77,26 @@ class VersionInfo(BaseModel):
     """Model version information."""
     model_hash: str = Field(..., description="Hash of model checkpoint")
     threshold_hash: str = Field(..., description="Hash of threshold config")
-    api_version: str = Field(default="1.0.0", description="API version")
+    api_version: str = Field(default="1.1.0", description="API version")
     timestamp: str = Field(..., description="Prediction timestamp")
+
+
+class XAIArtifact(BaseModel):
+    """Single XAI artifact descriptor."""
+    type: str = Field(..., description="Artifact type")
+    name: str = Field(..., description="Filename")
+    url: str = Field(..., description="URL to fetch artifact")
+    mime: str = Field(..., description="MIME type")
+
+
+class XAIInfo(BaseModel):
+    """XAI response info."""
+    enabled: bool = Field(..., description="Whether XAI was generated")
+    run_id: Optional[str] = Field(None, description="XAI run identifier")
+    run_dir: Optional[str] = Field(None, description="Relative path to run directory")
+    artifacts: List[XAIArtifact] = Field(default=[], description="List of artifacts")
+    highlights: Optional[List[Dict[str, Any]]] = Field(None, description="Top activation windows")
+    sanity: Optional[Dict[str, Any]] = Field(None, description="Sanity check results")
 
 
 class SuperclassPredictionResponse(BaseModel):
@@ -73,20 +108,20 @@ class SuperclassPredictionResponse(BaseModel):
     primary: PrimaryPrediction
     sources: SourceProbabilities
     versions: VersionInfo
+    xai: Optional[XAIInfo] = Field(None, description="XAI artifacts info")
 
 
 class MILocalizationResponse(BaseModel):
-    """MI localization prediction response with full contract fields."""
+    """MI localization prediction response."""
     mi_detected: bool = Field(..., description="Whether MI was detected")
     regions: List[str] = Field(default=[], description="Predicted MI regions")
     probabilities: Dict[str, float] = Field(default={}, description="Per-region probabilities")
-    
-    # Contract fields (K4 requirement)
-    label_space: str = Field(default="ptbxl_derived_anatomical_v1", description="Label space identifier")
-    labels: List[str] = Field(default=["AMI", "ASMI", "ALMI", "IMI", "LMI"], description="Ordered label list")
-    mapping_source: str = Field(default="src/data/mi_localization.py", description="Source file for mapping")
-    mapping_fingerprint: str = Field(default="8ab274e06afa1be8", description="Mapping version fingerprint")
-    localization_head_type: str = Field(default="classification_5", description="Head type (NOT regression_2)")
+    label_space: str = Field(default="ptbxl_derived_anatomical_v1")
+    labels: List[str] = Field(default=["AMI", "ASMI", "ALMI", "IMI", "LMI"])
+    mapping_source: str = Field(default="src/data/mi_localization.py")
+    mapping_fingerprint: str = Field(default="8ab274e06afa1be8")
+    localization_head_type: str = Field(default="classification_5")
+    xai: Optional[XAIInfo] = Field(None, description="XAI artifacts info")
 
 
 class HealthResponse(BaseModel):
@@ -107,121 +142,106 @@ class ReadyResponse(BaseModel):
 # =============================================================================
 
 class AppState:
-    """Application state for loaded models (3-model system)."""
+    """Application state for loaded models."""
     
     def __init__(self):
-        # CNN Models (3 tasks)
-        self.superclass_model = None      # 4-class [MI, STTC, CD, HYP]
-        self.binary_model = None          # 1-class (MI vs NORM)
-        self.localization_model = None    # 5-class [AMI, ASMI, ALMI, IMI, LMI]
-        
-        # XGBoost
+        self.superclass_model = None
+        self.binary_model = None
+        self.localization_model = None
         self.xgb_models = {}
         self.calibrators = {}
         self.scaler = None
         self.feature_schema = None
-        
-        # Config
         self.thresholds = {}
-        self.norm_stats = None
-        
-        # Metadata
         self.model_hashes = {}
         self.threshold_hash = ""
         self.loaded = False
+        self.xgb_data = None
+        self.device = None
     
     def load_models(
         self,
         superclass_checkpoint: Path = Path("checkpoints/ecgcnn_superclass.pt"),
-        binary_checkpoint: Path = Path("checkpoints/ecgcnn.pt"),
         localization_checkpoint: Path = Path("checkpoints/ecgcnn_localization.pt"),
         xgb_dir: Path = Path("logs/xgb_superclass"),
         thresholds_path: Path = Path("artifacts/thresholds_superclass.json"),
     ):
-        """Load all models with safe loader."""
+        """Load all models."""
         import torch
         import joblib
         from xgboost import XGBClassifier
-        from src.utils.model_loader import load_model_safe, validate_feature_schema
+        from src.utils.model_loader import load_model_safe
         
-        device = torch.device("cpu")
+        self.device = torch.device("cpu")
         
-        # --- Load Superclass (required) ---
+        # Superclass (required)
         if superclass_checkpoint.exists():
             self.superclass_model, meta = load_model_safe(
-                superclass_checkpoint, "superclass", device
+                superclass_checkpoint, "superclass", self.device
             )
             self.model_hashes["superclass"] = meta["checkpoint_hash"]
             print(f"Superclass model loaded (schema: {meta['schema']})")
+        else:
+            raise RuntimeError(f"Required superclass checkpoint not found: {superclass_checkpoint}")
         
-        # --- Load Binary (optional but recommended) ---
-        if binary_checkpoint.exists():
-            try:
-                self.binary_model, meta = load_model_safe(
-                    binary_checkpoint, "binary", device
-                )
-                self.model_hashes["binary"] = meta["checkpoint_hash"]
-                print(f"Binary model loaded (schema: {meta['schema']})")
-            except Exception as e:
-                print(f"Warning: Binary model load failed: {e}")
-        
-        # --- Load Localization (optional) ---
+        # Localization (optional)
         if localization_checkpoint.exists():
-            try:
-                self.localization_model, meta = load_model_safe(
-                    localization_checkpoint, "mi_localization", device
-                )
-                self.model_hashes["localization"] = meta["checkpoint_hash"]
-                print(f"Localization model loaded (schema: {meta['schema']})")
-            except Exception as e:
-                print(f"Warning: Localization model load failed: {e}")
+            self.localization_model, meta = load_model_safe(
+                localization_checkpoint, "mi_localization", self.device
+            )
+            self.model_hashes["localization"] = meta["checkpoint_hash"]
+            print(f"Localization model loaded")
         
-        # --- Load XGBoost models ---
+        # XGBoost
+        xgb_models_dict = {}
+        calibrators_dict = {}
+        scaler_obj = None
+        
         if xgb_dir.exists():
-            # Load feature schema (FAIL-FAST if missing)
             schema_path = xgb_dir / "feature_schema.json"
             if schema_path.exists():
                 with open(schema_path) as f:
                     self.feature_schema = json.load(f)
                 print(f"XGBoost feature schema loaded: {self.feature_schema['feature_count']} features")
-            else:
-                print("WARNING: feature_schema.json missing - XGBoost safety checks disabled")
             
             for cls in ["MI", "STTC", "CD", "HYP"]:
                 model_path = xgb_dir / cls / "xgb_model.json"
                 if model_path.exists():
                     model = XGBClassifier()
                     model.load_model(model_path)
+                    xgb_models_dict[cls] = model
                     self.xgb_models[cls] = model
                 
                 calibrator_path = xgb_dir / cls / "calibrator.joblib"
                 if calibrator_path.exists():
-                    self.calibrators[cls] = joblib.load(calibrator_path)
+                    calibrators_dict[cls] = joblib.load(calibrator_path)
+                    self.calibrators[cls] = calibrators_dict[cls]
             
             scaler_path = xgb_dir / "scaler.joblib"
             if scaler_path.exists():
-                self.scaler = joblib.load(scaler_path)
+                scaler_obj = joblib.load(scaler_path)
+                self.scaler = scaler_obj
         
-        # --- Load thresholds ---
+        self.xgb_data = {
+            "models": xgb_models_dict,
+            "calibrators": calibrators_dict,
+            "scaler": scaler_obj
+        }
+        
+        # Thresholds (required)
         if thresholds_path.exists():
             with open(thresholds_path) as f:
                 data = json.load(f)
             self.thresholds = data.get("thresholds", {})
-            
             with open(thresholds_path, "rb") as f:
                 self.threshold_hash = hashlib.md5(f.read()).hexdigest()[:8]
         else:
-            self.thresholds = {"MI": 0.5, "STTC": 0.5, "CD": 0.5, "HYP": 0.5}
-            self.threshold_hash = "default"
+            raise RuntimeError(f"Required thresholds not found: {thresholds_path}")
         
         self.loaded = True
-        print(f"Models loaded: Superclass={self.superclass_model is not None}, "
-              f"Binary={self.binary_model is not None}, "
-              f"Localization={self.localization_model is not None}, "
-              f"XGB={len(self.xgb_models)}")
+        print(f"Models loaded: Superclass=OK, Localization={self.localization_model is not None}, XGB={len(self.xgb_models)}")
 
 
-# Global state
 state = AppState()
 
 
@@ -232,10 +252,9 @@ state = AppState()
 app = FastAPI(
     title="CardioGuard-AI",
     description="Multi-label ECG Classification API",
-    version="1.0.0",
+    version="1.1.0",
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -247,14 +266,16 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Load models on startup with fail-fast validation."""
+    """Load models on startup (fail-closed)."""
     from src.utils.checkpoint_validation import (
         validate_all_checkpoints,
         CheckpointMismatchError,
         MappingDriftError,
     )
     
-    # --- Fail-closed checkpoint validation ---
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Fail-closed checkpoint validation
     print("Validating checkpoints...")
     try:
         results = validate_all_checkpoints(strict=True)
@@ -263,58 +284,28 @@ async def startup_event():
             if isinstance(result, dict) and result.get("valid"):
                 print(f"  {task}: out_dim={result.get('out_dim')} ✓")
     except (CheckpointMismatchError, MappingDriftError) as e:
-        print(f"CRITICAL: Checkpoint validation failed: {e}")
-        raise RuntimeError(f"Checkpoint validation failed: {e}")
+        raise RuntimeError(f"CRITICAL: Checkpoint validation failed: {e}")
     except FileNotFoundError as e:
         print(f"Warning: Some checkpoints missing: {e}")
     
-    # --- Load models ---
+    # Load models (fail-closed)
     print("Loading models...")
-    try:
-        state.load_models()
-        print("Models loaded successfully!")
-    except Exception as e:
-        print(f"Warning: Could not load models: {e}")
-        print("API will start but predictions will fail until models are loaded.")
+    state.load_models()  # Raises RuntimeError if required files missing
+    print("Models loaded successfully!")
 
 
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Health check endpoint."""
-    return HealthResponse(
-        status="healthy",
-        timestamp=datetime.utcnow().isoformat(),
-    )
-
-
-@app.get("/ready", response_model=ReadyResponse)
-async def readiness_check():
-    """Readiness check - are models loaded?"""
-    models_status = {
-        "cnn": state.cnn_model is not None,
-        "xgb_MI": "MI" in state.xgb_models,
-        "xgb_STTC": "STTC" in state.xgb_models,
-        "xgb_CD": "CD" in state.xgb_models,
-        "xgb_HYP": "HYP" in state.xgb_models,
-        "thresholds": len(state.thresholds) > 0,
-    }
-    
-    ready = all(models_status.values())
-    
-    return ReadyResponse(
-        ready=ready,
-        models_loaded=models_status,
-        message="All models loaded" if ready else "Some models not loaded",
-    )
-
+# =============================================================================
+# Utility Functions (NO XAI GENERATION)
+# =============================================================================
 
 def parse_ecg_file(file_content: bytes, filename: str) -> np.ndarray:
-    """Parse uploaded ECG file."""
-    with tempfile.NamedTemporaryFile(suffix=Path(filename).suffix, delete=False) as tmp:
-        tmp.write(file_content)
-        tmp_path = Path(tmp.name)
-    
+    """Parse uploaded ECG file with temp cleanup."""
+    tmp_path = None
     try:
+        with tempfile.NamedTemporaryFile(suffix=Path(filename).suffix, delete=False) as tmp:
+            tmp.write(file_content)
+            tmp_path = Path(tmp.name)
+        
         if filename.endswith(".npz"):
             data = np.load(tmp_path)
             if "signal" in data:
@@ -328,7 +319,8 @@ def parse_ecg_file(file_content: bytes, filename: str) -> np.ndarray:
         else:
             raise HTTPException(400, f"Unsupported file format: {filename}")
     finally:
-        tmp_path.unlink()
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
     
     # Ensure (channels, timesteps) format
     if signal.ndim == 1:
@@ -342,141 +334,222 @@ def parse_ecg_file(file_content: bytes, filename: str) -> np.ndarray:
     return signal.astype(np.float32)
 
 
-def get_primary_label(probs: Dict[str, float]) -> tuple:
-    """Determine primary label using MI-first rule."""
-    thresholds = state.thresholds
+def build_xai_info_from_manifest(run_id: str, run_dir: Path) -> Optional[XAIInfo]:
+    """
+    Build XAIInfo by READING manifest.json (NOT generating artifacts).
+    This is the ONLY XAI-related function in backend.
+    """
+    manifest_path = run_dir / "manifest.json"
+    if not manifest_path.exists():
+        return XAIInfo(enabled=False)
     
-    if probs.get("MI", 0) >= thresholds.get("MI", 0.5):
-        return "MI", probs["MI"]
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
     
-    for cls in ["STTC", "CD", "HYP"]:
-        if probs.get(cls, 0) >= thresholds.get(cls, 0.5):
-            return cls, probs[cls]
+    artifacts = []
+    for artifact in manifest.get("artifacts", []):
+        rel_path = artifact.get("path", "")
+        artifacts.append(XAIArtifact(
+            type=artifact.get("type", "unknown"),
+            name=Path(rel_path).name,
+            url=f"/runs/{run_id}/{rel_path}",
+            mime=artifact.get("mime", "application/octet-stream")
+        ))
     
-    # NORM
-    max_pathology = max(probs.get(c, 0) for c in ["MI", "STTC", "CD", "HYP"])
-    return "NORM", 1.0 - max_pathology
+    return XAIInfo(
+        enabled=True,
+        run_id=run_id,
+        run_dir=str(run_dir),
+        artifacts=artifacts,
+        highlights=manifest.get("highlights"),
+        sanity=manifest.get("sanity")
+    )
 
+
+# =============================================================================
+# Health Endpoints
+# =============================================================================
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint."""
+    return HealthResponse(
+        status="healthy",
+        timestamp=datetime.utcnow().isoformat(),
+    )
+
+
+@app.get("/ready", response_model=ReadyResponse)
+async def readiness_check():
+    """Readiness check."""
+    models_status = {
+        "superclass": state.superclass_model is not None,
+        "localization": state.localization_model is not None,
+        "xgb": len(state.xgb_models) > 0,
+        "thresholds": len(state.thresholds) > 0,
+    }
+    ready = state.loaded
+    return ReadyResponse(
+        ready=ready,
+        models_loaded=models_status,
+        message="Ready" if ready else "Not ready",
+    )
+
+
+# =============================================================================
+# Static Artifact Serving (Secure)
+# =============================================================================
+
+@app.get("/runs/{run_id}/{file_path:path}")
+async def serve_xai_artifact(run_id: str, file_path: str):
+    """Serve XAI artifact files with path traversal protection."""
+    # Validate run_id format
+    if not RUN_ID_PATTERN.match(run_id):
+        raise HTTPException(400, "Invalid run_id format")
+    
+    # Resolve paths
+    base_resolved = RUNS_DIR.resolve()
+    target_path = RUNS_DIR / run_id / file_path
+    target_resolved = target_path.resolve()
+    
+    # Path traversal check using is_relative_to
+    try:
+        target_resolved.relative_to(base_resolved)
+    except ValueError:
+        raise HTTPException(400, "Path traversal not allowed")
+    
+    if not target_resolved.exists():
+        raise HTTPException(404, "Artifact not found")
+    
+    if target_resolved.is_dir():
+        raise HTTPException(400, "Cannot serve directory")
+    
+    suffix = target_resolved.suffix.lower()
+    media_types = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".md": "text/markdown",
+        ".json": "application/json",
+        ".csv": "text/csv",
+        ".npz": "application/octet-stream",
+    }
+    return FileResponse(target_resolved, media_type=media_types.get(suffix, "application/octet-stream"))
+
+
+# =============================================================================
+# Prediction Endpoints (NO INLINE INFERENCE - calls pipeline only)
+# =============================================================================
 
 @app.post("/predict/superclass", response_model=SuperclassPredictionResponse)
 async def predict_superclass(
     file: UploadFile = File(...),
     ensemble_weight: float = Query(0.5, ge=0.0, le=1.0),
+    explain: bool = Query(False, description="Generate XAI artifacts"),
+    sanity_check: bool = Query(False, description="Run XAI sanity checks"),
 ):
     """
     Multi-label superclass prediction.
     
-    Accepts ECG signal file (.npz or .npy format).
-    Returns multi-label probabilities and primary label.
+    Pipeline does ALL inference and XAI generation.
+    Backend only maps result to response.
     """
-    import torch
+    from src.pipeline.inference.run_inference_superclass import predict as pipeline_predict
+    from src.xai.reporting import generate_run_id
     
     if not state.loaded:
         raise HTTPException(503, "Models not loaded")
     
-    if state.superclass_model is None:
-        raise HTTPException(503, "Superclass model not loaded")
-    
-    # Validate file size (10MB max)
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(413, "File too large (max 10MB)")
     
-    # Parse file
     try:
         signal = parse_ecg_file(content, file.filename)
     except Exception as e:
         raise HTTPException(400, f"Could not parse file: {e}")
     
-    # CNN prediction
-    device = torch.device("cpu")
-    with torch.no_grad():
-        signal_tensor = torch.as_tensor(signal, dtype=torch.float32).unsqueeze(0)
-        cnn_logits = state.superclass_model(signal_tensor)
-        cnn_probs = torch.sigmoid(cnn_logits).numpy()[0]
+    sample_id = Path(file.filename).stem if file.filename else "api_sample"
     
-    cnn_probs_dict = {
-        "MI": float(cnn_probs[0]),
-        "STTC": float(cnn_probs[1]),
-        "CD": float(cnn_probs[2]),
-        "HYP": float(cnn_probs[3]),
-    }
+    # Prepare run_dir for explain=true
+    run_id = None
+    run_dir = None
+    if explain:
+        run_id = generate_run_id("api", "multiclass")
+        run_dir = RUNS_DIR / run_id
     
-    # XGBoost prediction
-    xgb_probs_dict = {}
-    if state.xgb_models:
-        embeddings = state.superclass_model.backbone(signal_tensor).numpy()
-        if state.scaler:
-            embeddings = state.scaler.transform(embeddings)
-        
-        for cls in ["MI", "STTC", "CD", "HYP"]:
-            if cls in state.xgb_models:
-                raw_prob = state.xgb_models[cls].predict_proba(embeddings)[0, 1]
-                if cls in state.calibrators:
-                    prob = state.calibrators[cls].predict_proba([[raw_prob]])[0, 1]
-                else:
-                    prob = raw_prob
-                xgb_probs_dict[cls] = float(prob)
+    # PIPELINE DOES ALL WORK - no inline inference here
+    try:
+        result = pipeline_predict(
+            signal=signal,
+            cnn_model=state.superclass_model,
+            xgb_data=state.xgb_data,
+            thresholds=state.thresholds,
+            localization_model=state.localization_model,
+            device=state.device,
+            ensemble_weight=ensemble_weight,
+            explain=explain,
+            sanity_check=sanity_check,
+            run_dir=run_dir,
+            sample_id=sample_id,
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Prediction failed: {e}")
     
-    # Ensemble
-    w = ensemble_weight
-    ensemble_probs = {}
-    for cls in ["MI", "STTC", "CD", "HYP"]:
-        cnn_p = cnn_probs_dict[cls]
-        xgb_p = xgb_probs_dict.get(cls, cnn_p)
-        ensemble_probs[cls] = w * cnn_p + (1 - w) * xgb_p
+    # Read XAI info from manifest (if explain=true, pipeline wrote it)
+    xai_info = None
+    if explain and run_dir and run_dir.exists():
+        xai_info = build_xai_info_from_manifest(run_id, run_dir)
     
-    # NORM (derived)
-    norm_prob = 1.0 - max(ensemble_probs.values())
-    
-    # Predicted labels
-    predicted_labels = [
-        cls for cls in ["MI", "STTC", "CD", "HYP"]
-        if ensemble_probs[cls] >= state.thresholds.get(cls, 0.5)
-    ]
-    if not predicted_labels:
-        predicted_labels = ["NORM"]
-    
-    # Primary label
-    primary_label, primary_conf = get_primary_label(ensemble_probs)
+    # Map pipeline result to response
+    multi = result.get("multi", {})
+    probs = multi.get("probabilities", {})
+    sources = result.get("sources", {})
+    primary = result.get("primary", {})
     
     return SuperclassPredictionResponse(
         mode="multilabel-superclass",
         probabilities=PredictionProbabilities(
-            **ensemble_probs,
-            NORM=norm_prob,
+            MI=probs.get("MI", 0),
+            STTC=probs.get("STTC", 0),
+            CD=probs.get("CD", 0),
+            HYP=probs.get("HYP", 0),
+            NORM=probs.get("NORM", 0),
         ),
-        predicted_labels=predicted_labels,
-        thresholds=state.thresholds,
+        predicted_labels=multi.get("predicted_labels", ["NORM"]),
+        thresholds=multi.get("thresholds", state.thresholds),
         primary=PrimaryPrediction(
-            label=primary_label,
-            confidence=primary_conf,
+            label=primary.get("label", "NORM"),
+            confidence=primary.get("confidence", 0.5),
+            rule=primary.get("rule", "MI-first-then-priority"),
         ),
         sources=SourceProbabilities(
-            cnn=cnn_probs_dict,
-            xgb=xgb_probs_dict if xgb_probs_dict else None,
-            ensemble=ensemble_probs,
+            cnn=sources.get("cnn", {}),
+            xgb=sources.get("xgb"),
+            ensemble=sources.get("ensemble", {}),
         ),
         versions=VersionInfo(
             model_hash=state.model_hashes.get("superclass", ""),
             threshold_hash=state.threshold_hash,
             timestamp=datetime.utcnow().isoformat(),
         ),
+        xai=xai_info,
     )
 
 
 @app.post("/predict/mi-localization", response_model=MILocalizationResponse)
 async def predict_mi_localization(
     file: UploadFile = File(...),
-    threshold: float = Query(0.5, ge=0.0, le=1.0, description="Detection threshold"),
+    threshold: float = Query(0.5, ge=0.0, le=1.0),
+    explain: bool = Query(False, description="Generate XAI artifacts"),
 ):
     """
-    MI localization prediction (5 anatomical regions).
+    MI localization prediction.
     
-    Labels: [AMI, ASMI, ALMI, IMI, LMI]
-    Label space: ptbxl_derived_anatomical_v1 (DERIVED from PTB-XL SCP codes)
+    Pipeline does ALL inference and XAI generation.
+    Backend only maps result to response.
     """
-    import torch
+    from src.pipeline.inference.run_inference_localization import predict as pipeline_predict_localization
+    from src.xai.reporting import generate_run_id
     from src.data.mi_localization import MI_LOCALIZATION_REGIONS
     from src.utils.checkpoint_validation import MI_LOCALIZATION_FINGERPRINT
     
@@ -492,26 +565,42 @@ async def predict_mi_localization(
     except Exception as e:
         raise HTTPException(400, f"Could not parse file: {e}")
     
-    with torch.no_grad():
-        signal_tensor = torch.as_tensor(signal, dtype=torch.float32).unsqueeze(0)
-        logits = state.localization_model(signal_tensor)
-        probs = torch.sigmoid(logits).detach().cpu().numpy()[0]
+    sample_id = Path(file.filename).stem if file.filename else "api_sample"
     
-    probs_dict = {
-        region: float(probs[i])
-        for i, region in enumerate(MI_LOCALIZATION_REGIONS)
-    }
-    detected_regions = [r for r, p in probs_dict.items() if p >= threshold]
+    run_id = None
+    run_dir = None
+    if explain:
+        run_id = generate_run_id("api", "localization")
+        run_dir = RUNS_DIR / run_id
+    
+    # PIPELINE DOES ALL WORK
+    try:
+        result = pipeline_predict_localization(
+            signal=signal,
+            model=state.localization_model,
+            device=state.device,
+            threshold=threshold,
+            explain=explain,
+            run_dir=run_dir,
+            sample_id=sample_id,
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Prediction failed: {e}")
+    
+    xai_info = None
+    if explain and run_dir and run_dir.exists():
+        xai_info = build_xai_info_from_manifest(run_id, run_dir)
     
     return MILocalizationResponse(
-        mi_detected=len(detected_regions) > 0,
-        regions=detected_regions,
-        probabilities=probs_dict,
+        mi_detected=result.get("mi_detected", False),
+        regions=result.get("regions", []),
+        probabilities=result.get("probabilities", {}),
         label_space="ptbxl_derived_anatomical_v1",
         labels=MI_LOCALIZATION_REGIONS,
         mapping_source="src/data/mi_localization.py",
         mapping_fingerprint=MI_LOCALIZATION_FINGERPRINT,
         localization_head_type="classification_5",
+        xai=xai_info,
     )
 
 

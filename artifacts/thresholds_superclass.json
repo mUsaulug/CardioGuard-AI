@@ -1,4 +1,6 @@
 {
+  "_comment": "thresholds: API inference için default değerler. details: threshold optimization geçmişi (referans için, inference'da kullanılmaz).",
+  "_note_MI": "MI için details.MI.threshold (0.01) high-recall optimization sonucu. Production'da thresholds.MI (0.5) veya consistency_guard değerleri kullanılır.",
   "thresholds": {
     "MI": 0.5,
     "STTC": 0.5,

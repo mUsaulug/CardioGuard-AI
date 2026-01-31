@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from src.models.xgb import compute_binary_metrics
-from src.pipeline.run_xgb import load_features
+from src.pipeline.training.run_xgb import load_features
 
 
 def test_load_features_accepts_X_y(tmp_path) -> None:
