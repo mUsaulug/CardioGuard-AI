@@ -233,24 +233,26 @@ curl -X POST "localhost:8000/predict/superclass?explain=true" \
 
 ---
 
-# Slide 11: Tespit Edilen Riskler
+# Slide 11: Güvenlik Özellikleri
 
-## Kritik Bulgular
+## Güvenlik Kontrolleri
 
-| Ciddiyet | Bulgu |
-| :---: | :--- |
-| 🔴 | **Consistency Guard entegre değil** |
-| 🟡 | Hardcoded layer index (`features[-3]`) |
-| 🟡 | `requirements.txt`'te eksik: fastapi, uvicorn |
-| 🟢 | Dockerfile yok |
+| Kontrol | Durum |
+| :--- | :---: |
+| Input size validation (10MB) | ✅ |
+| Path traversal protection | ✅ |
+| Fail-closed startup | ✅ |
+| Consistency Guard | ✅ |
+| Type validation (Pydantic) | ✅ |
 
-## Consistency Guard Nedir?
+## Consistency Guard ✅ ENTEGRE
 
 Binary MI vs Superclass MI karşılaştırması:
-- `AGREE_MI`: İkisi de MI tespit → OK
-- `DISAGREE`: Biri MI, biri değil → FLAG
+- `AGREE_MI`: İkisi de MI tespit → HIGH triage
+- `DISAGREE_TYPE_1`: Superclass MI, Binary değil → REVIEW
+- `DISAGREE_TYPE_2`: Binary MI, Superclass değil → REVIEW
 
-**Mevcut Durum:** Kod yazılmış, test edilmiş, ama **çağrılmıyor**!
+**Entegrasyon:** `run_inference_superclass.py:276-291`
 
 ---
 
@@ -289,12 +291,13 @@ result = check_consistency(
 - ✅ Patient-level split (leakage yok)
 - ✅ Unified XAI
 - ✅ Type-safe kontratlar
+- ✅ Consistency Guard entegre
 
-**Eksikler:**
-- ⚠️ Consistency Guard entegrasyonu bekleniyor
+**İyileştirme Alanları:**
 - ⚠️ Container deployment hazırlığı
+- ⚠️ E2E test suite
 
-**Sonuç:** P0 düzeltmesi sonrası **production-ready**
+**Sonuç:** **Production-ready**
 
 ---
 

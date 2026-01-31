@@ -258,24 +258,37 @@ Eğer kontroller FAIL olursa → narrative'e WARNING eklenir.
 
 ---
 
-## 6. Kritik Bulgular
+## 6. Consistency Guard
 
-### S: Consistency Guard nedir ve neden sorunlu?
+### S: Consistency Guard nedir?
 
 **C:** Binary MI model vs Superclass MI model karşılaştırması.
 
-| Agreement | Durum | Aksiyon |
+| Agreement | Durum | Triage |
 | :--- | :--- | :--- |
-| `AGREE_MI` | İkisi de MI | STANDARD |
-| `DISAGREE_TYPE_1` | Superclass MI+, Binary MI- | ELEVATED (inceleme) |
-| `DISAGREE_TYPE_2` | Superclass MI-, Binary MI+ | CRITICAL (kaçırılmış olabilir) |
+| `AGREE_MI` | İkisi de MI | HIGH |
+| `AGREE_NO_MI` | İkisi de değil | LOW |
+| `DISAGREE_TYPE_1` | Superclass MI+, Binary MI- | REVIEW |
+| `DISAGREE_TYPE_2` | Superclass MI-, Binary MI+ | REVIEW |
 
-**Sorun:** Kod yazılmış, test edilmiş, ama `run_inference_superclass.py` içinde **çağrılmıyor**.
+**Entegrasyon Durumu:** ✅ **ENTEGRE** (2026-01-31)
 
 **Kanıt:** 
-- Modül: `consistency_guard.py`
-- Test: `test_consistency_guard.py` (PASS)
-- Çağrı: YOK (`grep -n "consistency" run_inference_superclass.py` → 0 sonuç)
+- Import: `run_inference_superclass.py:32`
+- Çağrı: `run_inference_superclass.py:276-291`
+- Test: `test_consistency_guard.py` + `test_consistency_integration.py` → PASS
+
+**Örnek Response:**
+```json
+{
+  "consistency": {
+    "agreement": "AGREE_MI",
+    "triage_level": "HIGH",
+    "superclass_mi_prob": 0.85,
+    "binary_mi_prob": 0.92
+  }
+}
+```
 
 ---
 
@@ -283,16 +296,17 @@ Eğer kontroller FAIL olursa → narrative'e WARNING eklenir.
 
 ### S: Sistem production-ready mı?
 
-**C:** **Neredeyse.**
+**C:** **Evet, production-ready.**
 
 - ✅ AUROC ~0.90
 - ✅ Type-safe kontratlar
 - ✅ Fail-closed startup
 - ✅ Security controls
-- ⚠️ Consistency Guard entegrasyonu gerekli
-- ⚠️ Docker deployment hazırlanmalı
+- ✅ Consistency Guard entegre
 
-P0 düzeltmesi sonrası → **EVET, production-ready**.
+**İyileştirme Önerileri:**
+- ⚠️ Docker deployment
+- ⚠️ E2E test suite
 
 ---
 

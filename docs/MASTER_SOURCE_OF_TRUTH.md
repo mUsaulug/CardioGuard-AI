@@ -689,7 +689,7 @@ if localization_model and "MI" in predicted_labels:
 
 **Trigger Condition:** `"MI" in predicted_labels AND localization_model is not None`
 
-### 5.13 Consistency Guard — CRITICAL FINDING
+### 5.13 Consistency Guard — ✅ INTEGRATED
 
 **File:** `src/pipeline/inference/consistency_guard.py` (165 lines)
 
@@ -727,15 +727,65 @@ def check_consistency(
         triage = "REVIEW"
 ```
 
-**🔴 CRITICAL FINDING: NOT INTEGRATED**
+**✅ ENTEGRASYON TAMAMLANDI (2026-01-31)**
 
-Verification: Search for `consistency` in `run_inference_superclass.py`:
-- Import statement: **NOT FOUND**
-- Function call: **NOT FOUND**
+**Import:**
+```python
+# Evidence: run_inference_superclass.py:32
+from src.pipeline.inference.consistency_guard import check_consistency, ConsistencyResult
+```
 
-**Confidence: High** — Direct grep confirms absence.
+**Guard Çağrısı:**
+```python
+# Evidence: run_inference_superclass.py:276-291
+consistency_result: Optional[ConsistencyResult] = None
+if binary_model is not None:
+    with torch.no_grad():
+        binary_logits = binary_model(signal_tensor)
+        binary_mi_prob = float(torch.sigmoid(binary_logits).cpu().numpy().flatten()[0])
+    
+    consistency_result = check_consistency(
+        superclass_mi_prob=ensemble_probs.get("MI", 0.0),
+        binary_mi_prob=binary_mi_prob,
+        superclass_threshold=thresholds.get("MI", 0.5),
+        binary_threshold=0.5,
+    )
+```
 
-**Impact:** Model disagreement detection is bypassed. The safety check designed to flag discrepancies between Binary MI and Superclass MI models is never executed.
+**Response'a Ekleme:**
+```python
+# Evidence: run_inference_superclass.py:426
+"consistency": consistency_result.to_dict() if consistency_result else None,
+```
+
+**Binary Model Yükleme:**
+```python
+# Evidence: main.py:207-214
+binary_checkpoint = Path("checkpoints/ecgcnn.pt")
+if binary_checkpoint.exists():
+    self.binary_model, meta = load_model_safe(
+        binary_checkpoint, "binary", self.device
+    )
+```
+
+**Test Kanıtı:**
+- Unit tests: `tests/test_consistency_guard.py` (177 satır, 10 test) ✅ PASSED
+- Integration test: `tests/test_consistency_integration.py` (4 test) ✅ PASSED
+
+**Örnek Response:**
+```json
+{
+  "consistency": {
+    "agreement": "AGREE_MI",
+    "triage_level": "HIGH",
+    "superclass_mi_prob": 0.85,
+    "binary_mi_prob": 0.92,
+    "superclass_mi_decision": true,
+    "binary_mi_decision": true,
+    "warnings": []
+  }
+}
+```
 
 ### 5.14 Pseudo-code: Complete Inference Flow
 
@@ -1088,11 +1138,11 @@ npm run dev
 
 ## 10. Findings & Recommendations
 
-### 10.1 CRITICAL (P0)
+### 10.1 CRITICAL (P0) — ✅ RESOLVED
 
-| ID | Finding | Impact | Evidence | Mitigation |
-| :---: | :--- | :--- | :--- | :--- |
-| F-001 | **Consistency Guard not integrated** | Model disagreement undetected | `run_inference_superclass.py` - no import of `consistency_guard` | Add `from .consistency_guard import check_consistency` and call in `predict()` |
+| ID | Finding | Status | Evidence | Resolution |
+| :---: | :--- | :---: | :--- | :--- |
+| F-001 | ~~Consistency Guard not integrated~~ | ✅ **RESOLVED** | `run_inference_superclass.py:32`, `run_inference_superclass.py:276-291` | Guard import ve çağrı eklendi, tests geçiyor (2026-01-31) |
 
 ### 10.2 HIGH (P1)
 

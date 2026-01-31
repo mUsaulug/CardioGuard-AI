@@ -29,6 +29,7 @@ from src.xai.shap_ovr import explain_single_sample
 from src.xai.unified import UnifiedExplainer
 from src.xai.sanity import XAISanityChecker
 from src.xai.visualize import plot_12lead_gradcam
+from src.pipeline.inference.consistency_guard import check_consistency, ConsistencyResult
 
 
 # Default paths
@@ -184,6 +185,7 @@ def predict(
     thresholds: Dict[str, float],
     localization_model: Optional[nn.Module],
     device: torch.device,
+    binary_model: Optional[nn.Module] = None,
     ensemble_weight: float = 0.5,
     explain: bool = False,
     sanity_check: bool = False,
@@ -271,6 +273,22 @@ def predict(
     # NORM probability (derived)
     norm_prob = 1.0 - max(ensemble_probs.values())
     
+    # ---------------------------------------------------------
+    # Consistency Guard (Binary MI vs Superclass MI)
+    # ---------------------------------------------------------
+    consistency_result: Optional[ConsistencyResult] = None
+    if binary_model is not None:
+        with torch.no_grad():
+            binary_logits = binary_model(signal_tensor)
+            binary_mi_prob = float(torch.sigmoid(binary_logits).cpu().numpy().flatten()[0])
+        
+        consistency_result = check_consistency(
+            superclass_mi_prob=ensemble_probs.get("MI", 0.0),
+            binary_mi_prob=binary_mi_prob,
+            superclass_threshold=thresholds.get("MI", 0.5),
+            binary_threshold=0.5,
+        )
+
     # ---------------------------------------------------------
     # MI Localization (Conditional)
     # ---------------------------------------------------------
@@ -408,6 +426,7 @@ def predict(
         },
         "run_id": run_dir.name if run_dir else None,
         "run_dir": str(run_dir) if run_dir else None,
+        "consistency": consistency_result.to_dict() if consistency_result else None,
     }
 
 

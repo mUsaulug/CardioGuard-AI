@@ -37,6 +37,18 @@ export interface Versions {
   timestamp: string;
 }
 
+// --- Consistency Guard Types ---
+
+export interface ConsistencyInfo {
+  agreement: string;
+  triage_level: string;
+  superclass_mi_prob: number;
+  binary_mi_prob: number;
+  superclass_mi_decision: boolean;
+  binary_mi_decision: boolean;
+  warnings: string[];
+}
+
 // --- Superclass Types ---
 
 export interface SuperclassProbabilities {
@@ -69,6 +81,7 @@ export interface SuperclassResponse {
   };
   versions: Versions;
   xai: XaiSchema | null;
+  consistency: ConsistencyInfo | null;
 }
 
 // --- MI Localization Types ---

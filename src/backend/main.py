@@ -99,6 +99,17 @@ class XAIInfo(BaseModel):
     sanity: Optional[Dict[str, Any]] = Field(None, description="Sanity check results")
 
 
+class ConsistencyInfo(BaseModel):
+    """Model agreement check result (optional)."""
+    agreement: str = Field(..., description="AGREE_MI/AGREE_NO_MI/DISAGREE_TYPE_1/DISAGREE_TYPE_2")
+    triage_level: str = Field(..., description="HIGH/LOW/REVIEW")
+    superclass_mi_prob: float = Field(..., description="MI prob from superclass model")
+    binary_mi_prob: float = Field(..., description="MI prob from binary model")
+    superclass_mi_decision: bool = Field(..., description="Superclass MI decision")
+    binary_mi_decision: bool = Field(..., description="Binary MI decision")
+    warnings: List[str] = Field(default=[], description="Disagreement warnings")
+
+
 class SuperclassPredictionResponse(BaseModel):
     """Full superclass prediction response."""
     mode: str = Field(default="multilabel-superclass", description="Prediction mode")
@@ -109,6 +120,7 @@ class SuperclassPredictionResponse(BaseModel):
     sources: SourceProbabilities
     versions: VersionInfo
     xai: Optional[XAIInfo] = Field(None, description="XAI artifacts info")
+    consistency: Optional[ConsistencyInfo] = Field(None, description="Model agreement check")
 
 
 class MILocalizationResponse(BaseModel):
@@ -191,6 +203,15 @@ class AppState:
             )
             self.model_hashes["localization"] = meta["checkpoint_hash"]
             print(f"Localization model loaded")
+        
+        # Binary MI model (optional - for consistency guard)
+        binary_checkpoint = Path("checkpoints/ecgcnn.pt")
+        if binary_checkpoint.exists():
+            self.binary_model, meta = load_model_safe(
+                binary_checkpoint, "binary", self.device
+            )
+            self.model_hashes["binary"] = meta["checkpoint_hash"]
+            print("Binary MI model loaded (for consistency guard)")
         
         # XGBoost
         xgb_models_dict = {}
@@ -486,6 +507,7 @@ async def predict_superclass(
             thresholds=state.thresholds,
             localization_model=state.localization_model,
             device=state.device,
+            binary_model=state.binary_model,
             ensemble_weight=ensemble_weight,
             explain=explain,
             sanity_check=sanity_check,
@@ -533,6 +555,7 @@ async def predict_superclass(
             timestamp=datetime.utcnow().isoformat(),
         ),
         xai=xai_info,
+        consistency=ConsistencyInfo(**result["consistency"]) if result.get("consistency") else None,
     )
 
 
