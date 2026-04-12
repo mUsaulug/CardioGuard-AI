@@ -229,14 +229,15 @@ def predict(
     xgb_probs_dict = {}
     if xgb_data["models"]:
         # Scale if scaler available
+        xgb_embeddings = embeddings
         if xgb_data["scaler"] is not None:
-            embeddings = xgb_data["scaler"].transform(embeddings)
-        
+            xgb_embeddings = xgb_data["scaler"].transform(embeddings)
+
         # Predict with each OVR model
         for cls in SUPERCLASS_LABELS:
             if cls in xgb_data["models"]:
                 model = xgb_data["models"][cls]
-                raw_prob = model.predict_proba(embeddings)[0, 1]
+                raw_prob = model.predict_proba(xgb_embeddings)[0, 1]
                 
                 # Calibrate if calibrator available
                 if cls in xgb_data["calibrators"]:
@@ -349,11 +350,18 @@ def predict(
 
         # 3. Unified Synthesis
         unifier = UnifiedExplainer()
+
+        # Get runner-up class for contrastive
+        sorted_classes = sorted(ensemble_probs.items(), key=lambda x: x[1], reverse=True)
+        runnerup_cls = sorted_classes[1][0] if len(sorted_classes) > 1 else None
+
         explanation_result = unifier.synthesize(
-            gradcam_res, 
-            shap_res, 
-            ensemble_probs, 
-            ensemble_weight
+            gradcam_res,
+            shap_res,
+            ensemble_probs,
+            ensemble_weight,
+            primary_label=primary_label,
+            runnerup_label=runnerup_cls,
         )
         # Add raw results for external tools (like comprehensive test)
         explanation_result["raw_gradcam"] = gradcam_res
