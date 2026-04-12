@@ -151,25 +151,6 @@ def plot_ecg_with_prediction(
     
     return plt.gcf() if hasattr(plt, 'gcf') else None
 
-def plot_gradcam_heatmap(
-    heatmap: np.ndarray,
-    output_path: Path,
-    title: str = "Grad-CAM Heatmap"
-):
-    """
-    Plot a single 1D heatmap.
-    """
-    if heatmap.ndim > 1:
-        heatmap = heatmap.squeeze()
-        
-    plt.figure(figsize=(10, 2))
-    plt.imshow(heatmap[np.newaxis, :], aspect="auto", cmap="jet")
-    plt.colorbar()
-    plt.title(title)
-    plt.yticks([])
-    plt.savefig(output_path, bbox_inches='tight')
-    plt.close()
-
 def plot_lead_attention(
     attention_scores: np.ndarray, # (12,)
     output_path: Path,

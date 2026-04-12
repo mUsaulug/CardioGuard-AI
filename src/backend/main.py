@@ -22,6 +22,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import json
 import hashlib
 import re
@@ -276,9 +277,11 @@ app = FastAPI(
     version="1.1.0",
 )
 
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in CORS_ORIGINS],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

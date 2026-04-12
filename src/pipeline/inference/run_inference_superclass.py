@@ -187,6 +187,7 @@ def predict(
     device: torch.device,
     binary_model: Optional[nn.Module] = None,
     ensemble_weight: float = 0.5,
+    localization_threshold: float = 0.5,
     explain: bool = False,
     sanity_check: bool = False,
     save_plot: Optional[Path] = None,
@@ -217,14 +218,16 @@ def predict(
         cnn_probs = torch.sigmoid(cnn_logits).cpu().numpy()[0]
     
     cnn_probs_dict = {cls: float(cnn_probs[i]) for i, cls in enumerate(SUPERCLASS_LABELS)}
-    
+
+    # Extract embeddings once (reused by XGBoost and SHAP)
+    embeddings = None
+    if xgb_data["models"] or explain:
+        with torch.no_grad():
+            embeddings = cnn_model.backbone(signal_tensor).cpu().numpy()
+
     # XGBoost prediction (if available)
     xgb_probs_dict = {}
     if xgb_data["models"]:
-        # Extract embeddings
-        with torch.no_grad():
-            embeddings = cnn_model.backbone(signal_tensor).cpu().numpy()
-        
         # Scale if scaler available
         if xgb_data["scaler"] is not None:
             embeddings = xgb_data["scaler"].transform(embeddings)
@@ -278,16 +281,19 @@ def predict(
     # ---------------------------------------------------------
     consistency_result: Optional[ConsistencyResult] = None
     if binary_model is not None:
-        with torch.no_grad():
-            binary_logits = binary_model(signal_tensor)
-            binary_mi_prob = float(torch.sigmoid(binary_logits).cpu().numpy().flatten()[0])
-        
-        consistency_result = check_consistency(
-            superclass_mi_prob=ensemble_probs.get("MI", 0.0),
-            binary_mi_prob=binary_mi_prob,
-            superclass_threshold=thresholds.get("MI", 0.5),
-            binary_threshold=0.5,
-        )
+        try:
+            with torch.no_grad():
+                binary_logits = binary_model(signal_tensor)
+                binary_mi_prob = float(torch.sigmoid(binary_logits).cpu().numpy().flatten()[0])
+            consistency_result = check_consistency(
+                superclass_mi_prob=ensemble_probs.get("MI", 0.0),
+                binary_mi_prob=binary_mi_prob,
+                superclass_threshold=thresholds.get("MI", 0.5),
+                binary_threshold=0.5,
+            )
+        except Exception as e:
+            print(f"Warning: Consistency check failed: {e}")
+            consistency_result = None
 
     # ---------------------------------------------------------
     # MI Localization (Conditional)
@@ -306,7 +312,7 @@ def predict(
         # Filter by threshold (default 0.5)
         detected_regions = [
             region for region, prob in localization_result.items()
-            if prob >= 0.5
+            if prob >= localization_threshold
         ]
         localization_result["predicted_regions"] = detected_regions
     
@@ -418,10 +424,6 @@ def predict(
         sanity_res = None
         if isinstance(explanation_result, dict):
             sanity_res = explanation_result.get("sanity_check")
-        else:
-            print(f"DEBUGGING ERROR: explanation_result is not dict! Type: {type(explanation_result)}")
-            print(f"DEBUGGING ERROR: Content: {explanation_result}")
-
         _write_manifest(
             run_dir=run_dir,
             sample_id=sample_id,

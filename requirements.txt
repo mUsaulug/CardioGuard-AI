@@ -9,3 +9,7 @@ tqdm
 shap
 matplotlib
 scipy
+fastapi
+uvicorn[standard]
+joblib
+pydantic

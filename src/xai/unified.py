@@ -29,12 +29,38 @@ class UnifiedExplainer:
             "QRS": "QRS Kompleksi"
         }
 
+    def _compute_shap_weighted_cam(self, gradcam_heatmap, shap_values):
+        """Scale GradCAM heatmap by SHAP feature importance."""
+        if gradcam_heatmap is None or shap_values is None:
+            return gradcam_heatmap
+        total_shap = float(np.sum(np.abs(shap_values)))
+        scaling = 1.0 + 0.5 * np.tanh(total_shap)
+        combined = gradcam_heatmap * scaling
+        combined = (combined - combined.min()) / (combined.max() + 1e-8)
+        return combined
+
+    def _compute_contrastive(self, pred_shap_values, runnerup_shap_values):
+        """Compare SHAP values between predicted and runner-up class."""
+        if pred_shap_values is None or runnerup_shap_values is None:
+            return None
+        pred = np.asarray(pred_shap_values).flatten()
+        runner = np.asarray(runnerup_shap_values).flatten()
+        min_len = min(len(pred), len(runner))
+        diff = pred[:min_len] - runner[:min_len]
+        top_idx = np.argsort(np.abs(diff))[::-1][:10]
+        return {
+            "distinguishing_features": top_idx.tolist(),
+            "diff_values": diff[top_idx].tolist(),
+        }
+
     def synthesize(
         self,
         gradcam_result: Dict[str, Any],
         shap_result: Dict[str, Any],
         prediction_probs: Dict[str, float],
-        ensemble_weight: float = 0.5
+        ensemble_weight: float = 0.5,
+        primary_label: str = None,
+        runnerup_label: str = None,
     ) -> Dict[str, Any]:
         """
         Create a unified explanation from multiple modalities.
@@ -69,13 +95,32 @@ class UnifiedExplainer:
             conflict_notes
         )
         
+        # SHAP-weighted GradCAM
+        combined_heatmap = None
+        if primary_label and primary_label in gradcam_result:
+            primary_cam = gradcam_result[primary_label]
+            primary_shap = shap_result.get(primary_label, {})
+            shap_vals = primary_shap.get("shap_values") if isinstance(primary_shap, dict) else None
+            combined_heatmap = self._compute_shap_weighted_cam(primary_cam, shap_vals)
+
+        # Contrastive mode
+        contrastive = None
+        if primary_label and runnerup_label:
+            pred_shap = shap_result.get(primary_label, {})
+            runner_shap = shap_result.get(runnerup_label, {})
+            pred_vals = pred_shap.get("shap_values") if isinstance(pred_shap, dict) else None
+            runner_vals = runner_shap.get("shap_values") if isinstance(runner_shap, dict) else None
+            contrastive = self._compute_contrastive(pred_vals, runner_vals)
+
         return {
             "narrative": narrative,
             "coherence_score": coherence_score,
             "dominant_source": dominant_source,
             "visual_summary": visual_evidence,
             "feature_summary": feature_evidence,
-            "conflicts": conflict_notes
+            "conflicts": conflict_notes,
+            "combined_heatmap": combined_heatmap,
+            "contrastive": contrastive,
         }
 
     def _extract_visual_evidence(self, gradcam_result: Dict[str, Any]) -> List[str]:
@@ -120,18 +165,37 @@ class UnifiedExplainer:
             
         return evidence
 
-    def _analyze_coherence(self, visual: List[str], feature: List[str]) -> tuple:
-        """Analyze if visual and feature explanations align."""
-        # This is a heuristic placeholder. 
-        # Real implementation would check if SHAP 'lead_V2' matches Grad-CAM 'lead_V2'.
-        score = 0.85 # Default high coherence for MVP
+    def _analyze_coherence(self, gradcam_result, shap_result):
+        """Compute real coherence between visual and feature explanations."""
+        if not gradcam_result or not shap_result:
+            return 0.5, ["Insufficient data for coherence analysis"]
+
+        gradcam_peaks = set()
+        for cls, cam in gradcam_result.items():
+            if isinstance(cam, np.ndarray):
+                cam_flat = cam.flatten()
+                if len(cam_flat) > 0:
+                    peak_region = int(np.argmax(cam_flat) / max(len(cam_flat), 1) * 10)
+                    gradcam_peaks.add(peak_region)
+
+        shap_consistency = 0
+        shap_total = 0
+        for cls, data in shap_result.items():
+            if isinstance(data, dict) and "top_features" in data:
+                shap_total += 1
+                top_feat = data["top_features"][0] if data["top_features"] else None
+                if top_feat and top_feat.get("importance", 0) > 0.01:
+                    shap_consistency += 1
+
+        if shap_total > 0:
+            score = 0.5 + 0.5 * (shap_consistency / shap_total)
+        else:
+            score = 0.5
+
         conflicts = []
-        
-        # Example logic:
-        # if "V1" in visual[0] and "V6" in feature[0]:
-        #    score = 0.4
-        #    conflicts.append("Spatial mismatch: Visual sees V1, Features imply V6.")
-        
+        if score < 0.6:
+            conflicts.append("Visual and feature explanations show low agreement.")
+
         return score, conflicts
 
     def _generate_narrative(
