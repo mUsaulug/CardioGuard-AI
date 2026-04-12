@@ -138,37 +138,51 @@ UTILITY:
   verify_data_layer.py
 ```
 
-## Bilinen Sorunlar
-1. `requirements.txt` eksik: `fastapi`, `uvicorn`, `joblib`, `pydantic` yok
-2. `UnifiedExplainer._analyze_coherence()` placeholder (sabit 0.85 donuyor)
-3. `plot_gradcam_heatmap` fonksiyonu `visualize.py`'da 2 kez tanimli (ikincisi eziyor)
-4. Thresholds production'da hep 0.5 - optimize edilmis degerler `details` icinde ama kullanilmiyor
-5. `datetime.utcnow()` deprecated (Python 3.12+)
-6. `torch.load()` cagrilarinda `weights_only=True` eksik
-7. CORS `allow_origins=["*"]` - production icin daraltilmali
-8. `@app.on_event("startup")` deprecated - `lifespan` kullanilmali
-9. Dockerfile yok
-10. Frontend'de Consistency Guard sonuclari render edilmiyor
+## Duzeltilen Sorunlar (2026-04-12)
+- [x] requirements.txt tamamlandi (fastapi, uvicorn, joblib, pydantic eklendi)
+- [x] Coherence score gercek hesaplama ile degistirildi (placeholder 0.85 kaldirildi)
+- [x] Duplicate plot_gradcam_heatmap duzeltildi
+- [x] Thresholds optimize edildi (Macro F1: 0.630 -> 0.681, +%8)
+- [x] CORS ortam degiskeninden okunuyor (CORS_ORIGINS)
+- [x] Dockerfile + docker-compose eklendi
+- [x] Frontend'de Consistency Guard render ediliyor
+- [x] XAI'ye SHAP-weighted GradCAM + contrastive mode eklendi
+- [x] Debug print'ler kaldirildi
+- [x] Consistency Guard exception handling eklendi
 
-## Model Performansi
-| Sinif | AUROC  | F1     | Destek |
-|-------|--------|--------|--------|
-| MI    | 0.9022 | 0.6933 | 550    |
-| STTC  | 0.9193 | 0.6638 | 506    |
-| CD    | 0.8923 | 0.6794 | 496    |
-| HYP   | 0.8805 | 0.4844 | 261    |
-| Macro | 0.8998 | 0.6302 | -      |
+## Kalan Sorunlar
+1. `datetime.utcnow()` deprecated (Python 3.12+) - duzeltilecek
+2. `torch.load()` cagrilarinda `weights_only=True` eksik
+3. `@app.on_event("startup")` deprecated - `lifespan` kullanilmali
+
+## Model Performansi (Optimize Edilmis Thresholds ile)
+| Sinif | AUROC  | F1 (eski) | F1 (yeni) | Threshold | Destek |
+|-------|--------|-----------|-----------|-----------|--------|
+| MI    | 0.9022 | 0.6933    | 0.6383    | 0.16      | 550    |
+| STTC  | 0.9193 | 0.6638    | **0.7277**| 0.26      | 506    |
+| CD    | 0.8923 | 0.6794    | **0.7254**| 0.28      | 496    |
+| HYP   | 0.8805 | 0.4844    | **0.5335**| 0.19      | 261    |
+| Macro | 0.8998 | 0.6302    | **0.6810**| -         | -      |
+
+**Not:** MI F1 dustu ama recall 0.70 -> 0.93'e cikti (klinik guvenlik onceligi).
 
 ## Ensemble Formulu
 ```
-ensemble_prob[sinif] = w * CNN_prob + (1-w) * XGB_prob   (default w=0.5)
+ensemble_prob[sinif] = 0.15 * CNN_prob + 0.85 * XGB_prob  (optimize edilmis)
 NORM_prob = 1.0 - max(ensemble_probs)
 ```
 
 ## Oncelik Kurali (Primary Label)
 MI > STTC > CD > HYP > NORM
 
+## Docker
+```bash
+docker-compose up --build    # Tek komutla calistir
+# http://localhost:8000      # Frontend + API
+```
+
 ## Test
 ```bash
-pytest tests/ -v
+pytest tests/ -v             # Tum testler
+pytest tests/test_api.py -v  # API endpoint testleri
 ```

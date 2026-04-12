@@ -172,12 +172,12 @@ classDiagram
     Pipeline_Orchestrator --> CNN_Module : "forward pass"
     Pipeline_Orchestrator --> XGBoost_Module : "predict_proba"
     Pipeline_Orchestrator --> XAI_Engine : "generate explanations"
-    Pipeline_Orchestrator ..> ConsistencyGuard : "NOT CURRENTLY CALLED ⚠️"
+    Pipeline_Orchestrator --> ConsistencyGuard : "check_consistency()"
 ```
 
 ### 3.1 Kritik Bulgu: Consistency Guard
 
-> ⚠️ **DİKKAT:** `ConsistencyGuard` modülü (`src/pipeline/inference/consistency_guard.py`) kod tabanında mevcut ve unit testleri yazılmış (`tests/test_consistency_guard.py`), ancak ana inference orchestrator olan `run_inference_superclass.py` dosyasında **IMPORT EDİLMEMİŞ VE ÇAĞRILMAMAKTADIR.**
+> ✅ **GÜNCELLEME (2026-04-12):** `ConsistencyGuard` modülü **TAM ENTEGRE** durumdadır. `run_inference_superclass.py` dosyasında import edilmiş ve `predict()` fonksiyonu içinde çağrılmaktadır.
 
 **Kanıt:**
 ```bash
