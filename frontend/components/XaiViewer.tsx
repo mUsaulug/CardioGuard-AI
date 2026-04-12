@@ -69,66 +69,24 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ artifact, baseUrl }
   return <p className="text-sm text-slate-400 p-4 italic">İçerik yüklenemedi.</p>;
 };
 
-type TabKey = "gradcam" | "shap" | "report";
-
 interface XaiViewerProps {
   xai: XaiSchema | null;
   baseUrl: string;
 }
 
 export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>("gradcam");
-
   if (!xai || !xai.enabled) {
     return null;
   }
 
   const { artifacts, run_id, sanity } = xai;
 
-  const categorize = (artifacts: Artifact[]) => {
-    const gradcam: Artifact[] = [];
-    const shap: Artifact[] = [];
-    const report: Artifact[] = [];
-
-    (artifacts || []).forEach((a) => {
-      const name = a.name.toLowerCase();
-      const type = a.type.toLowerCase();
-
-      // report_png contains both GradCAM and SHAP panels - show in both tabs
-      if (type === "report_png" || name.includes("report")) {
-        gradcam.push(a);
-        shap.push(a);
-      } else if (name.includes("gradcam") || name.includes("grad_cam") || type.includes("gradcam")) {
-        gradcam.push(a);
-      } else if (name.includes("shap") || type.includes("shap")) {
-        shap.push(a);
-      }
-
-      // narrative goes to report tab
-      if (type === "narrative_md" || name.endsWith(".md") || a.mime.includes("markdown")) {
-        report.push(a);
-      }
-    });
-
-    return { gradcam, shap, report };
-  };
-
-  const categorized = categorize(artifacts);
-
-  const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: "gradcam", label: "GradCAM Haritası", count: categorized.gradcam.length },
-    { key: "shap", label: "SHAP Analizi", count: categorized.shap.length },
-    { key: "report", label: "Klinik Rapor", count: categorized.report.length },
-  ];
-
-  const currentArtifacts = categorized[activeTab];
-
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            Açıklanabilir Yapay Zeka (XAI)
+            Klinik Rapor
           </h2>
           {run_id && (
             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
@@ -139,36 +97,13 @@ export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
         {sanity && <SanityBadge sanity={sanity} />}
       </div>
 
-      <div className="border-b border-slate-200 dark:border-slate-700">
-        <nav className="flex">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-sm font-medium transition border-b-2 ${
-                activeTab === tab.key
-                  ? "border-blue-500 text-blue-500 dark:text-blue-400"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              {tab.label}
-              {tab.count > 0 && (
-                <span className="ml-1.5 text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      <div className="p-4 space-y-4 max-h-[600px] overflow-auto">
-        {currentArtifacts.length === 0 ? (
+      <div className="p-4 space-y-4 max-h-[800px] overflow-auto">
+        {(!artifacts || artifacts.length === 0) ? (
           <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-8">
-            Bu kategoride artefakt bulunamadı.
+            Rapor verisi bulunamadı.
           </p>
         ) : (
-          currentArtifacts.map((artifact, idx) => (
+          artifacts.map((artifact, idx) => (
             <div
               key={artifact.url || idx}
               className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden"
@@ -176,7 +111,7 @@ export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
               <div className="bg-slate-100 dark:bg-slate-900 px-4 py-2 text-xs font-mono text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                 <span className="font-bold">{artifact.name}</span>
                 <span className="uppercase bg-slate-200 dark:bg-slate-700 px-1.5 rounded text-[10px]">
-                  {artifact.type}
+                  {artifact.type === "report_png" ? "Görsel Rapor" : artifact.type === "narrative_md" ? "Açıklama" : artifact.type}
                 </span>
               </div>
               <ArtifactRenderer artifact={artifact} baseUrl={baseUrl} />
