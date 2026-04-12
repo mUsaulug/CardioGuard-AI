@@ -36,6 +36,7 @@ import numpy as np
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 
@@ -644,6 +645,16 @@ async def predict_mi_localization(
         localization_head_type="classification_5",
         xai=xai_info,
     )
+
+
+# =============================================================================
+# Static Frontend (Docker production)
+# =============================================================================
+
+# Serve frontend static files in production (Docker)
+_frontend_dist = Path("frontend/dist")
+if _frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
 
 
 # =============================================================================

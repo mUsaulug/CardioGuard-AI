@@ -1,0 +1,16 @@
+.git
+.idea
+__pycache__
+*.pyc
+node_modules
+.venv
+venv
+physionet.org
+docs
+tests
+predictions
+features_out
+academic_assets
+figures
+*.md
+!README.md
