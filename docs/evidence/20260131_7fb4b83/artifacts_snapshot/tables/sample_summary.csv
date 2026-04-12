@@ -1,0 +1,11 @@
+sample_id,pred_class,pred_proba,true_label,sanity_status,passed_checks
+sample_000_normal,MI,0.9243411,,SKIPPED,0
+sample_001_mi,MI,0.8693621,,SKIPPED,0
+sample_002_sttc,CD,0.92518854,,SKIPPED,0
+sample_003_cd,CD,0.9342631,,SKIPPED,0
+sample_004_hyp,CD,0.9055809,,SKIPPED,0
+sample_005_normal,CD,0.9151038,,SKIPPED,0
+sample_006_mi,CD,0.8790981,,SKIPPED,0
+sample_007_sttc,CD,0.93757915,,SKIPPED,0
+sample_008_cd,CD,0.9136354,,SKIPPED,0
+sample_009_hyp,CD,0.92346823,,SKIPPED,0

@@ -1,0 +1,2937 @@
+T.C.
+İSTANBUL TOPKAPI
+ÜNİVERSİTESİ
+MÜHENDİSLİK VE DOĞA
+BİLİMLERİ FAKÜLTESİ
+YAZILIM MÜHENDİLİĞ BÖLÜMÜ
+CardioGuard-AI
+Musa Uluğ
+21040301044
+BİTİRME PROJESİ
+(^)
+İSTANBUL 2025
+
+(^)
+Projenin Danışmanı :
+Jüri Üyesi :
+Jüri Üyesi :
+
+i
+AKADEMİK DÜRÜSTLÜK BEYANI
+Mezuniyet projesi olarak sunduğum “CARDİOGUARD-AI” başlıklı çalışmanın,
+bilimsel ahlak ve geleneklere uygun olarak tarafımdan yazıldığını, yararlandığım
+eserlerin tamamının kaynaklarda gösterildiğini ve çalışmam içerisinde kullanıldıkları
+her yerde atıf yapıldığını belirtir ve onurumla doğrularım.
+
+Tarih
+Öğrenci Adı Soyadı
+ii
+TEŞEKKÜR
+Çalışmalarım süresince bilimsel katkıları ile beni aydınlatan, farklı bakış açıları ile yol
+gösteren, yakın ilgi ve yardımları ile beni motive eden ve bu günlere gelmemde en
+büyük katkı sahibi olan sayın .......................’e teşekkürü bir borç bilirim.
+
+Deneysel çalışmalarım sırasında karşılaştığım zorlukları aşmamda yardımlarından
+dolayı ............’a ve ........................’e teşekkür ederim.
+
+Ayrıca, çalışmalarım süresince sabır göstererek beni daima destekleyen değerli aileme
+ve arkadaşlarıma en içten teşekkürlerimi sunarım.
+
+Tarih
+Öğrenci Adı
+iii
+ÖZET
+Bu çalışma, 12 derivasyonlu elektrokardiyografi (EKG) sinyalleri üzerinden
+Miyokard Enfarktüsü (MI) tespiti ve anatomik lokalizasyonunun, klinik karar destek
+bakış açısıyla güvenilir ve üretime taşınabilir bir sistem tasarımı kapsamında ele
+alınmasını amaçlamaktadır. Çalışmada problem; manuel EKG yorumlamasının zaman
+alıcı, subjektif ve hataya açık olması, ayrıca MI lokalizasyonunun doğru belirlenmesinin
+tedavi planı açısından kritik önem taşıması olarak tanımlanmıştır. Bu doğrultuda
+CardioGuard-AI için gereksinim analizi gerçekleştirilmiş; fonksiyonel gereksinimlerin
+yanında güvenilirlik, güvenlik ve performans gereksinimleri ölçülebilir hedeflerle
+tanımlanmıştır.
+
+Yöntem olarak, veri hazırlama ve modelleme sürecinin sonraki dönemde
+uygulanmasına zemin oluşturacak şekilde modüler bir mimari kurgulanmış; sistemin
+işleyişi UML Use Case ve Class diyagramları ile modellenmiş, veri bütünlüğü ve
+izlenebilirlik gereksinimleri ERD (Varlık-İlişki Diyagramı) üzerinden tasarlanmıştır.
+Ayrıca sistemin çalışma zamanı akışının ve üretim ortamına taşınabilirliğinin
+netleştirilmesi amacıyla sıralı akış (sequence) ve dağıtım (deployment) perspektifleri ele
+alınmış; iş paketleri ve zamanlama planı ile proje yönetimi çıktıları yapılandırılmıştır.
+Böylece, model çıktılarının standart bir API sözleşmesi üzerinden raporlanması ve olası
+hataların erken aşamada yakalanmasını hedefleyen fail-fast yaklaşımı gibi güvenilirlik
+mekanizmaları tasarım seviyesinde konumlandırılmıştır.
+
+Sonuç olarak bu çalışma; CardioGuard-AI projesinin yalnızca kavramsal düzeyde
+kalmaması için, doğrulanabilir gereksinimler, diyagramlar, veri modeli ve planlama
+artefaktlarından oluşan kapsamlı bir mühendislik dokümantasyonu sunmakta; bir
+sonraki dönemde gerçekleştirilecek implementasyon ve doğrulama çalışmalarına
+doğrudan rehberlik edecek uygulanabilir bir temel oluşturmaktadır.
+
+Anahtar Kelimeler: Elektrokardiyografi, Miyokard Enfarktüsü, Lokalizasyon,
+Klinik Karar Destek, Sistem Tasarımı, UML, ERD
+
+iv
+ABSTRACT
+This study aims to address myocardial infarction (MI) detection and anatomical
+localization from 12-lead electrocardiography (ECG) signals within the scope of a
+reliable and deployment-ready clinical decision support system design. The problem is
+defined as the time-consuming, subjective, and error-prone nature of manual ECG
+interpretation, along with the clinical importance of accurately localizing MI for
+treatment planning. Accordingly, a requirements analysis for CardioGuard-AI is
+conducted, and measurable targets are defined not only for functional requirements but
+also for reliability, security, and performance.
+
+Methodologically, a modular system architecture is proposed to serve as a
+practical foundation for implementation in the next phase. The system behavior is
+modeled using UML Use Case and Class diagrams, while data integrity and traceability
+requirements are designed through an Entity-Relationship Diagram (ERD). In addition,
+runtime behavior and deployment considerations are clarified by incorporating sequence
+and deployment perspectives, and project management outputs are structured via work
+packages and a scheduling plan. Reliability mechanisms—such as a standardized API
+contract for model outputs and a fail-fast approach to prevent silent failures—are
+positioned at the design level to improve operational trustworthiness.
+
+As a result, this study provides comprehensive engineering documentation
+consisting of verifiable requirements, diagrams, a data model, and planning artifacts,
+ensuring that the CardioGuard-AI project does not remain at a conceptual level. The
+delivered outputs establish an actionable baseline that directly guides subsequent
+implementation and validation efforts.
+
+Keywords: Electrocardiography, Myocardial Infarction, Localization, Clinical
+Decision Support, System Design, UML, ERD
+
+v
+İÇİNDEKİLER
+AKADEMİK DÜRÜSTLÜK BEYANI ..................................................................................... i
+TEŞEKKÜR .............................................................................................................................. ii
+ÖZET ........................................................................................................................................ iii
+ABSTRACT ............................................................................................................................. iv
+İÇİNDEKİLER .......................................................................................................................... v
+ŞEKİLLER DİZİNİ ................................................................................................................. vii
+ÇİZELGELER DİZİNİ ........................................................................................................... viii
+KISALTMALAR ...................................................................................................................... ix
+1 GİRİŞ ................................................................................................................................... 1
+1.1 Problem Tanımı .............................................................................................................. 2
+1.2 projenin amacı ve kapsamı ............................................................................................. 4
+1.3 Projenin katkıları ............................................................................................................ 6
+2 KAYNAK ARAŞTIRMASI ................................................................................................ 8
+2.2 EKG Sinyali Sınıflandırmasında Derin Öğrenme Yaklaşımları .................................... 9
+2.3 Miyokard Enfarktüsü Tespiti ve Anatomik Lokalizasyon ........................................... 11
+2.4 PTB-XL Veri Seti: Standartlaşma ve Benchmark Rolü ............................................... 13
+2.5 Hibrit Mimari Yaklaşımlar: CNN ve XGBoost Entegrasyonu .................................... 15
+2.6 Açıklanabilir Yapay Zeka (XAI) ve Klinik Karar Destek Sistemleri .......................... 17
+2.7 Üretim Sistemlerinde Model İzleme ve Güvenilirlik ................................................... 18
+2.8 Bu Projenin Literatürdeki Konumlandırması ............................................................... 20
+3 MATERYAL VE YÖNTEM ............................................................................................. 21
+3.1 Veri Seti: PTB-XL ....................................................................................................... 22
+3.1.1 VERİ SETİNİN ÖZELLİKLERİ............................................................................ 22
+3.1.2 Veri Bölünmesi (Split Stratejisi) ............................................................................ 22
+3.1.3 Etiket Dönüşümleri ve Türetilmiş Etiket Sistemi ................................................... 24
+3.1.4 Veri ön işleme........................................................................................................ 25
+3.2 MODEL MİMARİSİ ............................................... Hata! Yer işareti tanımlanmamış.
+3.2.1 ECGBackbone (CNN Temel Mimarisi) ................................................................. 25
+3.2.2 Üç Model Yaklaşımı ............................................................................................... 27
+3.3 Hibrit Mimari: CNN + XGBoost Ensemble ................................................................. 28
+3.3.1 Hibrit Pipeline Mantığı ........................................................................................... 28
+3.3.2 XGBoost Hiperparametreleri .................................................................................. 29
+3.3.3 Feature Schema Lock (Güvenlik) ........................................................................... 29
+3.4 İnferans Orkestrasyonu ................................................................................................ 30
+3.4.1 Üç Aşamalı Karar Akışı ......................................................................................... 30
+3.5 Üretim Güvenilirliği Mekanizmaları ............................................................................ 31
+
+vi
+vii
+ŞEKİLLER DİZİNİ
+Şekil 1. Veri seti filtreleme ve etiket kaynağı (data provenance): PTB-XL ham veriden MI seçimi ve
+lokalizasyon için geçerli alt kümenin oluşturulması. ......................................................................................... 23
+Şekil 2. MI lokalizasyon etiket haritalama süreci ve mapping fingerprint: SCP kodlarından hedef lokalizasyon
+sınıf gruplarına dönüşüm. .................................................................................................................................. 25
+Şekil 3. ECGBackbone CNN mimarisi (katman analizi): Conv1D tabanlı bloklar ile gömlem (embedding)
+üretimi. ............................................................................................................................................................... 26
+Şekil 4. İnferans orkestrasyonu ve tutarlılık kapısı (Consistency Gate): Superclass CNN ve Binary Guard
+çıktıları üzerinden karar/triage akışı ve lokalizasyon modeline geçiş. .............................................................. 28
+Şekil 5. Hibrit çıkarım hattı ve özellik şeması kilidi (Schema Lock): CNN embedding → ölçekleme →
+XGBoost bankası → ensemble birleşimi. .......................................................................................................... 29
+Şekil 6. Açıklanabilirlik (XAI) üretim iş akışı: Grad-CAM ve SHAP çıktılarının artefact deposuna kaydı ve
+AIResult ile ilişkilendirilmesi. ........................................................................................................................... 30
+Şekil 7. İstek yaşam döngüsü ve fail-fast kontrol sıralaması: Doğrulama, giriş ayrıştırma, schema lock ve
+fingerprint kontrolleri ile hata yönetimi. ............................................................................................................ 31
+Şekil 8. Çok katmanlı sistem mimarisi: İstemci–API Gateway–FastAPI model servisi ve AIResult v1.0 çıktı
+sözleşmesi. ......................................................................................................................................................... 32
+Şekil 9 Gereksinim Bağımlılıkları ..................................................................................................................... 38
+Şekil 10. Kullanım Senaryoları Diyagramı ........................................................................................................ 41
+Şekil 11. Paket Bağımlılıkları ............................................................................................................................ 43
+Şekil 12. Model Paketi Class Diyyagramı ......................................................................................................... 46
+Şekil 13. Veri Paketi Class Diyagramı .............................................................................................................. 49
+Şekil 14. Pipeline Paketi Class Diyagramı ........................................................................................................ 50
+Şekil 15. XAI Paketi Class Diyagramı .............................................................................................................. 52
+Şekil 16. Backend Paketi Class Diyagramı........................................................................................................ 55
+Şekil 17. Planlanan Sınıfların Diyagramı .......................................................................................................... 58
+Şekil 18. Varlık - İlişki Diyagramı .................................................................................................................... 62
+Şekil 19. Dağıtım Diyagramı ............................................................................................................................. 65
+Şekil 20. Ana Tahmin Akışı – Klinisyenden başlayarak API, CNN, XGBoost, Guard, Lokalizasyon ve XAI
+bileşenleri arasındaki etkileşim. 16 adımlık sıralı akış gösterilmektedir ................................................... 67
+Şekil 21.Sistem Başlatma Akışı – Main, Doğrulayıcı, Loader ve State bileşenleri arasındaki fail-fast
+mekanizması. Loop yapısı her model için tekrar eden kontrolleri gösterir. ...................................................... 68
+Şekil 22. Tutarlılık Kontrolü Akışı – API ve Guard bileşenleri arasında alt (alternative) yapısı ile üç farklı
+senaryo gösterilmektedir. XGBoost Hibrit Pipeline Akışı .......................................................................... 69
+Şekil 23XGBoost Hibrit Pipeline Akışı – API, Backbone, Scaler, XGB ve Calib bileşenleri arasındaki
+etkileşim. Loop yapısı her sınıf için tekrar eden tahmin sürecini gösterir. ........................................................ 70
+Şekil 24Planlanan Akışlar (v2.0) – RAG entegrasyonu ile klinik kılavuz kullanımı ve LLM rapor üretimi. .. 71
+Şekil 25. Monte Carlo Dropout ile belirsizlik tahmini akışı. ............................................................................. 71
+Şekil 26. UX Şema 1 (EKG Yükleme) .............................................................................................................. 79
+Şekil 27. UX Şema 2 (Sonuçlar) .................................................................................................................. 81
+Şekil 28. UX Şema 3 (XAI Görüntüleme/Raporlama) ...................................................................................... 81
+Şekil 29 Gantt Şeması ........................................................................................................................................ 84
+
+viii
+  - 3.5.1 Fail-Fast Checkpoint Validation
+  - 3.5.2 Mapping Fingerprint Doğrulaması
+  - 3.5.3 Feature Schema Lock
+3.6 API Sözleşmesi: AIResult v1.0
+3.6.1 Endpoint Tasarımı
+3.6.2 Response Contract
+3.6.3 Değerlendirme Metrikleri (Planlanan)
+4 SONUÇLAR
+5 TARTIŞMA
+6 İş paketleri ve zamanlama planı.........................................................................................
+7 KAYNAKLAR
+Tablo 1. PTB-XL veri seti dağılımı (Train/Val/Test) ÇİZELGELER DİZİNİ
+Tablo 2 Veri Yükleme ve İşlem Gereksinimleri
+Tablo 3 Sınıflandırma ve Tahmin Gereksinimleri
+Tablo 4 Hibrit Model Pipline Gereksinimleri
+Tablo 5 Açıklanabilirlik (XAI) Gereksinimleri
+Tablo 6 API Servisi Gereksinimleri
+Tablo 7 Güvenilirlik ve Güvenlik Gereksinimleri
+Tablo 8 Performans Gereksinimleri
+Tablo 9 Kullanılan XAI Yöntemleri
+Tablo 10 Faz 1 Tamamlanan İş Paketleri ve Çıktıları (WP1.0–WP1.7)
+Tablo 11 Faz 2 İş Paketleri ve Çıktıları (WP2.1–WP2.7)
+Tablo 12 Faz 3 İş Paketleri ve Çıktıları (WP3.1–WP3.8)
+Tablo 13 Faz 4 Deployment ve Operasyon........................................................................................................
+Tablo 14 Planlama
+Tablo 15 Gantt Tablosu
+ix
+KISALTMALAR
+CNN : Convolutional Neural Network
+
+MI : Myocardial Infarction (Miyokard Enfarktüsü)
+
+XAI : Explainable Artificial Intelligence (Açıklanabilir Yapay Zeka)
+
+PTB-XL : PTB-XL Electrocardiography Database (PTB-XL EKG veri seti)
+
+STTC : ST/T Change (ST/T değişikliği)
+
+CD : Conduction Disorder (İletim bozukluğu)
+
+HYP : Hypertrophy (Hipertrofi)
+
+NORM : Normal
+
+AMI : Anterior Myocardial Infarction (Ön MI)
+
+ASMI : Anteroseptal Myocardial Infarction (Anteroseptal MI)
+
+ALMI : Anterolateral Myocardial Infarction (Anterolateral MI)
+
+IMI : Inferior Myocardial Infarction (İnferior MI)
+
+LMI : Lateral Myocardial Infarction (Lateral MI)
+
+1 GİRİŞ
+Kardiyovasküler hastalıklar (KVH), dünya genelinde her yıl yaklaşık 17,9 milyon
+insanın ölümüne neden olarak, küresel ölüm nedenlerinin başında yer almaktadır. Bu
+hastalık grubunun en kritik ve acil müdahale gerektiren formlarından biri olan Miyokard
+Enfarktüsü (MI), kalp kasının yetersiz kan akışı nedeniyle nekroza uğraması olarak
+tanımlanır ve erken teşhis edilmediğinde kalıcı doku hasarına veya ölüme yol
+açabilmektedir. Elektrokardiyografi (EKG), MI tespitinde noninvazif, düşük maliyetli
+ve yaygın olarak kullanılan birincil tanı aracıdır. Ancak, 12-derivasyonlu EKG
+sinyallerinin manuel yorumlanması, deneyimli kardiyologlar için bile zaman alıcı,
+subjektif ve hata eğilimli bir süreçtir. Özellikle çoklu damar tutulumu olan hastalarda,
+MI'nın anatomik lokalizasyonunun doğru belirlenmesi, tedavi planlaması açısından
+kritik önem taşımakta, ancak mevcut klinik uygulamalarda bu doğruluk oranları
+istenilen düzeyde bulunmamaktadır.
+
+Son yıllarda yapay zeka ve derin öğrenme teknolojilerinin tıbbi görüntüleme ve sinyal
+işleme alanlarındaki başarıları, EKG tabanlı otomatik tanı sistemlerine olan ilgiyi
+önemli ölçüde artırmıştır. Evrişimsel sinir ağları (Convolutional Neural Networks -
+CNN), ham EKG dalga formlarından otomatik öznitelik çıkarımı yaparak, geleneksel
+makine öğrenmesi yöntemlerinin gerektirdiği manuel öznitelik mühendisliğini ortadan
+kaldırmış ve çeşitli kardiyak patolojilerin sınıflandırılmasında yüksek doğruluk
+oranlarına ulaşmıştır. Bununla birlikte, tek bir derin öğrenme modelinin klinik ortamda
+güvenilir bir şekilde kullanılabilmesi için, yalnızca yüksek doğruluk oranı yeterli
+değildir; modelin kararlarının açıklanabilir olması, farklı veri dağılımlarına karşı
+dayanıklılığı ve üretim ortamındaki hata modlarına karşı güvenli fail-fast
+mekanizmalarıyla donatılmış olması gerekmektedir.
+
+Bu çalışma, EKG tabanlı MI tespiti ve lokalizasyonu için çoklu model orkestrasyonu,
+tutarlılık doğrulama mekanizmaları ve açıklanabilir yapay zeka bileşenlerini entegre
+eden hibrit bir karar destek sistemi geliştirmeyi amaçlamaktadır. Geliştirilen
+CardioGuard-AI sistemi, yalnızca yüksek performanslı bir sınıflandırıcı olmakla
+kalmayıp, aynı zamanda klinik güvenilirlik, şeffaflık ve üretim ortamındaki operasyonel
+dayanıklılık gereksinimlerini de karşılayacak şekilde tasarlanmıştır.
+
+1.1 PROBLEM TANIMI
+Miyokard enfarktüsünün erken ve doğru tespiti, hasta mortalitesini azaltma ve
+kalıcı kalp hasarını önleme açısından yaşamsal önem taşımaktadır. Klinik pratikte, EKG
+sinyalleri üzerinden yapılan görsel değerlendirme, Q dalgası anormallikleri, ST segment
+elevasyonu ve T dalgası inversiyonu gibi karakteristik özelliklere dayanmaktadır.
+Ancak, bu özelliklerin yorumlanması, kardiyologların deneyimine, yorgunluk durumuna
+ve subjektif değerlendirme kriterlerine bağlı olarak değişkenlik gösterebilmektedir. Bir
+çalışmada, deneyimli kardiyologların görsel EKG değerlendirmesinde, özellikle left
+circumflex (LCX) bölgesinde %15 gibi düşük bir duyarlılık, çoklu damar tutulumunda
+(double vessel, DVT) %24 ve üç damar tutulumunda (triple vessel, TVT) %4 gibi kabul
+edilemez düzeyde düşük doğruluk oranları saptanmıştır [1]. Bu bulgular, manuel
+değerlendirmenin güvenilirlik sorunlarını açıkça ortaya koymaktadır.
+
+Yapay zeka tabanlı otomatik EKG analiz sistemlerinin geliştirilmesi, bu sınırlamaları
+aşmak için umut verici bir yaklaşım sunmaktadır. Ancak, literatürdeki çoğu çalışma, tek
+bir derin öğrenme modelinin performansına odaklanmakta ve modelin klinik ortamda
+karşılaşabileceği kritik güvenilirlik sorunlarını yeterince ele almamaktadır. Örneğin, tek
+bir CNN modelinin yüksek doğruluk oranı sergilemesi, modelin her EKG kaydında aynı
+güvenilirlikle çalıştığı anlamına gelmemektedir. Özellikle sınır durumlarında
+(borderline cases), modelin güven düzeyinin düşük olması veya farklı patolojiler
+arasında kararsız kalması, klinik karar sürecinde yanlış yönlendirmelere neden
+olabilmektedir. Ayrıca, derin öğrenme modellerinin "kara kutu" doğası, klinisyenlerin
+modelin kararlarına güvenmesini zorlaştırmakta ve modelin hangi EKG özelliklerine
+dayanarak karar verdiğinin anlaşılamaması, klinik kabul edilebilirliği olumsuz
+etkilemektedir.
+
+Üretim ortamında karşılaşılan bir diğer kritik sorun ise "sessiz hata" (silent failure)
+riskidir. Özellikle, CNN tabanlı öznitelik çıkarımının ardından XGBoost gibi gradient
+boosting algoritmaları kullanılarak sınıflandırma yapılan hibrit sistemlerde, CNN
+modelinin mimarisinde yapılan değişiklikler (örneğin, çıktı boyutunun 64'ten 128'e
+çıkması) veya özniteliklerin sırasının değişmesi, XGBoost modelinin beklenmedik ve
+mantıksız tahminler üretmesine neden olabilmektedir. Bu tür hatalar, sistem tarafından
+hata mesajı üretmeden sessizce gerçekleştiğinden, yalnızca sonuçların klinik olarak
+anlamsız olması durumunda fark edilebilmektedir [2]."Bu durum, hasta güvenliği
+açısından ciddi bir risk oluşturmaktadır.
+
+MI lokalizasyonu görevinde ise, PTB-XL gibi geniş ölçekli veri setlerindeki etiket
+karmaşıklığı ve çeşitliliği, ek zorluklar yaratmaktadır. PTB-XL veri setinde, MI ile
+ilişkili 13'ten fazla SCP (Standardized Communication Protocol for Computer Assisted
+Electrocardiography) kodu bulunmakta ve bu kodların bir kısmı tek bir anatomik
+bölgeye karşılık gelirken, bazıları (örneğin, ILMI - inferolateral MI) birden fazla
+bölgeyi temsil etmektedir [3]. Ayrıca, posterior MI (PMI) gibi nadir görülen
+lokalizasyon tiplerinin veri setindeki düşük temsili, modelin bu tür durumları
+öğrenmesini zorlaştırmaktadır. Etiket uzayındaki bu türetme (derived labeling) sürecinin
+dokümante edilmemesi veya modelin eğitildiği etiket uzayının üretim ortamında
+kullanılan etiket uzayından farklılaşması (label space drift), modelin ürettiği sonuçların
+klinik olarak geçersiz hale gelmesine neden olabilmektedir.
+
+Bu çalışmanın ele aldığı temel problem, EKG tabanlı MI tespiti ve lokalizasyonu için,
+yalnızca yüksek doğruluk oranına sahip olmakla kalmayıp, aynı zamanda klinik
+güvenilirlik, açıklanabilirlik ve üretim ortamında operasyonel güvenlik gereksinimlerini
+de karşılayan entegre bir karar destek sisteminin eksikliğidir. Mevcut yaklaşımların tek
+model odaklı doğası, çoklu doğrulama mekanizmalarının eksikliği, açıklanabilirlik
+bileşenlerinin sistem tasarımına sonradan eklenmiş eklentiler olarak kalması ve üretim
+ortamındaki hata modlarına karşı yetersiz koruma mekanizmaları, bu çalışmanın
+motivasyonunu oluşturmaktadır.
+
+1.2 PROJENİN AMACI VE KAPSAMI
+Bu çalışmanın temel amacı, 12-derivasyonlu EKG sinyallerinden miyokard
+enfarktüsü ve diğer kardiyak patolojilerin tespiti için, çoklu model orkestrasyonu,
+tutarlılık doğrulama mekanizmaları ve açıklanabilir yapay zeka bileşenlerini entegre
+eden hibrit bir karar destek sistemi geliştirmektir. Sistem, tek bir modelin kararına
+bağımlı kalmayarak, farklı görevler için özelleştirilmiş üç ayrı CNN modelinin
+çıktılarını entegre etmekte ve bu modeller arasındaki uyuşmazlıkları tespit ederek
+klinisyenlere ek uyarılar sunmaktadır.
+
+Sistemin birincil amaçları şu şekilde sıralanabilir: İlk olarak, EKG sinyallerinden dört
+ana kardiyak patoloji sınıfının (MI - Miyokard Enfarktüsü, STTC - ST/T Değişiklikleri,
+CD - İletim Bozuklukları, HYP - Hipertrofi) çoklu-etiketli sınıflandırmasının yapılması
+hedeflenmektedir. Bu sınıflandırma görevi için, PTB-XL veri setinin hiyerarşik etiket
+yapısından yararlanılarak eğitilmiş bir superclass CNN modeli kullanılmaktadır. İkinci
+olarak, MI tespitinde güvenilirliği artırmak amacıyla, superclass CNN modelinin MI
+tahmini, ikinci bir bağımsız binary MI CNN modeli tarafından doğrulanmaktadır. Bu iki
+modelin çıktıları, bir tutarlılık kontrol mekanizması (consistency guard) tarafından
+karşılaştırılmakta ve modeller arasında uyuşmazlık tespit edildiğinde, sistem otomatik
+olarak bu durumu bir "review" uyarısı olarak işaretlemektedir. Üçüncü olarak, MI tespit
+edilen vakalarda, enfarktüsün anatomik lokalizasyonu beş bölge (AMI - Anterior MI,
+ASMI - Anteroseptal MI, ALMI - Anterolateral MI, IMI - Inferior MI, LMI - Lateral
+MI) üzerinden çoklu-etiketli bir sınıflandırma ile belirlenmektedir. Bu lokalizasyon
+görevi, yalnızca MI varlığı her iki model tarafından da onaylandığında (MI gate)
+devreye girmektedir. Sistemin dördüncü temel amacı, modellerin kararlarının
+açıklanabilir hale getirilmesidir. Bu kapsamda, CNN modelleri için Gradient-weighted
+Class Activation Mapping (Grad-CAM) tekniği kullanılarak, modelin hangi EKG
+segmentlerine odaklandığını gösteren temporal ısı haritaları üretilmektedir. Hibrit
+katmanda kullanılan XGBoost bileşeni için ise, SHAP (SHapley Additive exPlanations)
+değerleri hesaplanarak, her bir özniteliğin model kararına olan katkısı sayısal olarak
+gösterilmektedir. Beşinci olarak, sistemin üretim ortamında güvenilir bir şekilde
+çalışabilmesi için, fail-fast başlangıç doğrulamaları, etiket uzayı drift tespiti için
+fingerprint mekanizması ve XGBoost bileşeni için feature schema lock gibi güvenlik
+katmanları entegre edilmektedir.
+
+Bu mekanizmalar, yanlış model-görev eşleşmelerinin, etiket tanımlarındaki
+değişikliklerin ve öznitelik uzayındaki sapmaların sistemin çalışması sırasında sessizce
+gerçekleşmesini engellemekte ve bu tür durumları proaktif olarak tespit ederek sistemi
+güvenli bir şekilde durdurabilmektedir.
+
+Çalışmanın kapsamı, PTB-XL veri seti ile sınırlandırılmıştır. PTB-XL, PhysioNet
+platformu üzerinden açık erişimli olarak sunulan, 18,885 hastadan toplanan 21,837 adet
+10-saniyelik 12-derivasyonlu EKG kaydını içeren ve her kaydın iki kardiyolog
+tarafından SCP-ECG standardına uygun şekilde etiketlendiği geniş ölçekli bir veri
+setidir [3]. Veri setinin stratified 10-fold cross-validation yapısı kullanılmış olup, fold
+1-8 eğitim, fold 9 doğrulama ve fold 10 test seti olarak ayrılmıştır. Sistemin mimari
+tasarımı, üç ayrı CNN modelinin (superclass, binary MI ve MI lokalizasyon) sıralı
+orkestrasyonunu, CNN öznitelik çıkarımı üzerine inşa edilmiş XGBoost ensemble
+katmanını ve açıklanabilirlik bileşenlerini içermektedir.
+
+Çalışmanın kapsamı dışında kalan bazı önemli sınırlamalar bulunmaktadır. İlk olarak,
+sistem yalnızca 12-derivasyonlu EKG kayıtları ile çalışacak şekilde tasarlanmıştır; 3-
+lead, 5-lead veya 6-lead gibi azaltılmış derivasyon sayılarına sahip EKG kayıtları
+desteklenmemektedir. İkinci olarak, sistem 100 Hz örnekleme frekansı ile eğitilmiştir;
+500 Hz veya farklı frekanslarda kaydedilmiş EKG verilerinin kullanılabilmesi için
+yeniden örnekleme (resampling) işlemi gerekmektedir. Üçüncü olarak, posterior MI
+(PMI) lokalizasyonu, Phase-1 kapsamına dahil edilmemiştir; bu lokalizasyon tipi
+gelecek çalışmalarda ele alınacaktır. Dördüncü olarak, sistemin klinik validasyonu,
+gerçek hasta verileri üzerinde prospektif bir çalışma ile değil, PTB-XL test seti üzerinde
+retrospektif bir değerlendirme ile sınırlıdır. Son olarak, sistem, tıbbi bir "teşhis" aracı
+olarak değil, "klinik karar destek" sistemi olarak konumlandırılmıştır; nihai tanı ve
+tedavi kararının her zaman klinisyen sorumluluğunda olması gerekmektedir. Bu
+konumlandırma, hem etik hem de yasal açıdan (KVKK - Kişisel Verilerin Korunması
+Kanunu uyumluluğu) gerekli bir sınırlamadır.Özetle, bu çalışmanın kapsamı, tasarım ve
+planlama aşamalarını, sistem mimarisinin dokümantasyonunu, veri seti üzerinde
+eğitilmiş modellerin entegrasyonunu ve teorik olarak önerilen güvenlik
+mekanizmalarının tasarım seviyesinde dokümantasyonunu içermektedir. Sistemin tam
+implementasyonu, gerçek zamanlı API servislerinin geliştirilmesi ve kapsamlı test
+sonuçlarının elde edilmesi, çalışmanın sonraki aşamalarında gerçekleştirilecektir.
+
+1.3 PROJENİN KATKILARI
+Bu çalışma, EKG tabanlı MI tespiti ve lokalizasyonu alanında, teknik,
+metodolojik, açıklanabilirlik ve üretim güvenliği boyutlarında özgün katkılar
+sunmaktadır. Çalışmanın literatüre ve klinik uygulamalara sağlayacağı katkılar aşağıda
+detaylandırılmaktadır.
+Teknik açıdan, çalışmanın en özgün katkısı, üç farklı CNN modelinin (superclass,
+binary MI ve MI lokalizasyon) sıralı orkestrasyonu ve bu modeller arasında tutarlılık
+doğrulama mekanizması (consistency guard) kurulmasıdır. Literatürdeki çoğu çalışma,
+tek bir modelin performansını optimize etmeye odaklanırken, bu çalışma, farklı görevler
+için uzmanlaşmış modellerin çıktılarının bir araya getirilerek daha güvenilir bir karar
+mekanizması oluşturulabileceğini göstermektedir. Consistency guard, superclass
+CNN'in MI tahmini ile binary MI CNN'in bağımsız doğrulamasını karşılaştırarak, dört
+farklı durum (AGREE_MI, AGREE_NO_MI, DISAGREE_TYPE_1,
+DISAGREE_TYPE_2) tanımlamakta ve bu durumların her birine farklı öncelik
+seviyeleri (HIGH, LOW, REVIEW) atamaktadır. Bu yaklaşım, modellerin uyuşmazlık
+gösterdiği durumlarda otomatik olarak klinisyen müdahalesini tetiklemekte ve böylece
+false positive oranlarını azaltarak klinik güvenilirliği artırmaktadır. Ayrıca, MI
+lokalizasyon modelinin yalnızca MI varlığı onaylandığında devreye girmesi (MI gate
+mekanizması), gereksiz hesaplama yükünü azaltmakta ve lokalizasyon tahminlerinin
+güvenilirliğini artırmaktadır.
+Metodolojik olarak, çalışma, CNN tabanlı öznitelik çıkarımı ile XGBoost ensemble
+yönteminin birleştirildiği hibrit bir mimari önermektedir. CNN'in lokal patern öğrenme
+kapasitesi, XGBoost'un global karar sınırlarını optimize etme yeteneği ile
+harmanlananarak, her iki yaklaşımın güçlü yönlerinden faydalanılmaktadır. Ancak, bu
+çalışmanın özgün metodolojik katkısı, yalnızca hibrit mimarinin kullanılması değil, aynı
+zamanda bu mimaride ortaya çıkabilecek "sessiz hata" riskinin proaktif olarak
+yönetilmesidir. XGBoost bileşeni için geliştirilen feature schema lock mekanizması,
+CNN modelinin çıktı boyutunun, özniteliklerin sırasının veya ölçeklendirme
+parametrelerinin değişmesi durumunda sistemin otomatik olarak hata vermesini
+sağlamaktadır. Bu mekanizma, “feature_schema.json” adlı bir meta-veri dosyası ile
+CNN embedding boyutunun (64 boyut), öznitelik isimlerinin ve versiyon bilgilerinin
+kayıt altına alınmasını ve her çalışma zamanında bu bilgilerin doğrulanmasını
+içermektedir.
+
+Açıklanabilirlik boyutunda, çalışma, XAI (Explainable AI) bileşenlerini sistemin
+sonradan eklenen opsiyonel bileşenleri olarak değil, sistem mimarisinin organik bir
+parçası olarak konumlandırmaktadır. Grad-CAM ve SHAP çıktıları, yalnızca analiz
+amaçlı üretilmekle kalmayıp, aynı zamanda bir artifact discovery mekanizması ile API
+yanıt sözleşmesine (AIResult v1.0 contract) entegre edilmektedir. Bu sayede, frontend
+uygulamaları veya raporlama sistemleri, XAI çıktılarına standart bir yapı üzerinden
+erişebilmekte ve bu çıktıları kullanıcılara sunabilmektedir. XAI bileşenlerinin sistem
+tasarımının başından itibaren contract-driven bir yaklaşımla entegre edilmesi,
+açıklanabilirlik araştırmalarının genellikle izole prototip aşamalarında kalması sorununa
+karşı özgün bir çözüm önermektedir.Üretim güvenliği açısından, çalışma, fail-fast
+başlangıç doğrulamaları, etiket uzayı drift tespiti için fingerprint mekanizması ve multi-
+head karışıklığını önleme stratejileri gibi bir dizi güvenlik katmanı tanımlamaktadır.
+Fail-fast yaklaşımı, sistem başlatılırken tüm model checkpoint'lerinin beklenen
+görevlerle uyumlu olup olmadığını doğrulamakta ve örneğin, 2-boyutlu temporal
+regression head'inin yanlışlıkla 5-sınıflı MI lokalizasyon görevi için kullanılmasını
+engellemektedir. Etiket uzayı fingerprint'i (8ab274e06afa1be8), MI lokalizasyon
+etiketlerinin türetildiği SCP kod eşleştirmesinin değişip değişmediğini tespit etmekte ve
+eğer modelin eğitildiği etiket uzayı ile üretim ortamındaki etiket uzayı farklılaşmışsa,
+sistemin otomatik olarak hata vermesini sağlamaktadır. Bu tür proaktif güvenlik
+mekanizmalarının sistematik bir şekilde entegre edilmesi, tıbbi AI sistemlerinin üretim
+ortamında karşılaşabileceği riskler konusunda literatürde sınırlı sayıda çalışma
+bulunması nedeniyle, önemli bir katkı oluşturmaktadır. Klinik açıdan, çalışmanın
+sağlayacağı en önemli katkı, çoklu doğrulama mekanizmaları sayesinde false positive
+oranlarının azaltılması ve böylece klinisyenlerin gereksiz yere ek tetkiklere
+yönlendirilmesinin önlenmesidir. Consistency guard mekanizmasının ürettiği
+DISAGREE uyarıları, özellikle sınır durumlarında modelin güven düzeyinin düşük
+olduğu vakaları açıkça işaretlemekte ve bu vakalarda klinisyenin dikkatini çekmektedir.
+
+Sonuç olarak, bu çalışma, yalnızca yüksek performanslı bir EKG sınıflandırma modeli
+geliştirmenin ötesine geçerek, klinik güvenilirlik, açıklanabilirlik ve üretim ortamında
+operasyonel dayanıklılık gereksinimlerini entegre eden bütüncül bir sistem tasarımı
+sunmaktadır. Çalışmanın teknik, metodolojik ve klinik katkıları, EKG tabanlı AI
+sistemlerinin gerçek dünya uygulamalarına geçiş sürecinde karşılaşılan zorlukların ele
+alınmasına yönelik özgün çözümler içermektedir.
+
+2 KAYNAK ARAŞTIRMASI
+Elektrokardiyografi (EKG) sinyallerinin otomatik yorumlanması ve kardiyak
+patolojilerin yapay zeka destekli tespiti, son on yılda tıbbi sinyal işleme ve makine
+öğrenmesi alanlarının en aktif araştırma konularından biri haline gelmiştir. Bu bölümde,
+özellikle miyokard enfarktüsü (MI) tespiti ve lokalizasyonu, derin öğrenme mimarileri,
+hibrit yaklaşımlar, açıklanabilir yapay zeka (XAI) ve klinik karar destek sistemlerinde
+üretim güvenilirliği konularında yapılan çalışmalar sistematik olarak incelenmektedir.
+Literatür taraması, geleneksel sinyal işleme yöntemlerinden başlayarak, derin öğrenme
+devrimine, güncel hibrit mimarilere ve üretim ortamında karşılaşılan güvenilirlik
+sorunlarına kadar geniş bir spektrumu kapsamaktadır. Her alt bölümde, ilgili
+çalışmaların güçlü yönleri, sınırlılıkları ve bu projenin literatürdeki konumlanması
+eleştirel bir bakış açısıyla değerlendirilmektedir.
+
+2.2 EKG SİNYALİ SINIFLANDIRMASINDA DERİN ÖĞRENME
+YAKLAŞIMLARI
+Kardiyovasküler hastalıkların dünya çapında ölüm nedenlerinin başında geldiği
+göz önüne alındığında, EKG sinyallerinin otomatik yorumlanması hem klinik iş yükünü
+azaltma hem de erken teşhis doğruluğunu artırma potansiyeli taşımaktadır [3].
+Geleneksel EKG analiz yöntemleri, QRS kompleksi, P dalgası ve T dalgası gibi
+karakteristik noktaların manuel segmentasyonuna ve el yapımı öznitelik çıkarımına
+dayanmaktaydı. Bu yaklaşımlar, uzman kardiyologların klinik deneyimlerinden
+türetilmiş kural tabanlı sistemler veya istatistiksel öznitelikler (dalga genişlikleri,
+amplitüdler, spektral özellikler) üzerine inşa edilmiş klasik makine öğrenmesi
+algoritmaları (Destek Vektör Makineleri, Rastgele Orman) kullanmaktaydı. Ancak, bu
+yöntemler özellikle MI gibi karmaşık patolojilerde, zamanla değişen morfolojik
+farklılıklar, hasta-spesifik varyasyonlar ve gürültü nedeniyle sınırlı bir başarı
+sunmaktaydı. Ayrıca, manuel öznitelik çıkarımı süreci, hem zaman alıcı hem de uzman
+bilgisine bağımlı olup, farklı veri setlerine genelleme kapasitesi düşüktü [4].
+
+Derin öğrenmenin EKG analizine adaptasyonu, bu sınırlamaların aşılmasında
+devrim niteliğinde bir etki yaratmıştır. Evrişimsel sinir ağları (CNN), EKG gibi zaman
+serisi verilerinde yerel örüntüleri otomatik olarak öğrenme kapasitesi sayesinde, özellik
+çıkarımı aşamasını elimine ederek doğrudan ham sinyalden öğrenmeyi mümkün
+kılmıştır. Nitekim, 1-boyutlu CNN mimarilerinin, çok katmanlı tasarımlarla 12 farklı
+aritmi tipinde %97.03 doğruluk elde ettiği gösterilmiştir. Bu çalışmada, 7 katmanlı bir
+1D-CNN mimarisi kullanılmış ve her katmanda farklı filtre boyutları (16, 32, 64, 128)
+ile hiyerarşik öznitelik öğrenme gerçekleştirilmiştir. Model, PTB-XL veri seti üzerinde
+eğitilmiş ve özellikle atriyoventriküler blok (AVB) ve atriyal fibrilasyon (AFIB) gibi
+aritmi tiplerinde yüksek duyarlılık göstermiştir. Ancak, bu çalışmanın bir sınırlılığı,
+yalnızca aritmi sınıflandırması üzerine odaklanması ve MI gibi iskemik kalp
+hastalıklarının tespitinde performansının değerlendirilmemiş olmasıdır.
+
+Bununla birlikte, CNN'lerin yerel öznitelik çıkarımındaki üstünlüğüne karşın,
+uzun vadeli zamansal bağımlılıkları yakalamada sınırlamaları mevcuttur. EKG
+sinyallerinde, bir kardiyak döngünün farklı fazları (P dalgası, QRS kompleksi, T
+dalgası) arasındaki zamansal ilişkiler, bazı patolojilerin tespiti için kritik önem
+taşımaktadır. Örneğin, P-R intervali uzaması, atriyal depolarizasyon ile ventriküler
+depolarizasyon arasındaki gecikmeyi gösterir ve bazı ileti sistemleri bozukluklarının
+erken belirtecidir. Bu boşluğu doldurmak amacıyla, Long Short-Term Memory (LSTM)
+ve Transformer tabanlı mimariler, EKG sinyallerinde sıralı bağımlılıkları modellemek
+için önerilmiştir. LSTM'ler, gating mekanizmaları (unutma kapısı, girdi kapısı, çıktı
+kapısı) sayesinde uzun vadeli bağımlılıkları öğrenebilme kapasitesine sahip olsa da,
+uzun sekansların işlenmesinde hesaplama maliyeti yüksektir ve gradyan kaybolması
+(vanishing gradient) sorununa karşı tam bir çözüm sunamamaktadır [4].
+
+Transformer mimarileri ise, self-attention mekanizması ile tüm zaman adımları
+arasında global ilişkileri doğrudan modelleyebilmektedir. Attention mekanizması, her
+bir zaman adımının diğer tüm zaman adımlarıyla olan ilişkisini öğrenerek, uzun menzilli
+zamansal bağımlılıkları paralel olarak işleyebilmektedir. Ancak, Transformer'ların
+büyük veri seti gereksinimleri ve hesaplama kaynak talebi, sınırlı veri setlerinde
+uygulanabilirliğini zorlaştırmaktadır. Bir çalışmada, pure Transformer mimarisinin
+PTB-XL veri seti üzerinde CNN'den daha düşük performans gösterdiği, ancak CNN ile
+birleştirildiğinde (hibrit mimari) optimal sonuçlar elde edildiği rapor edilmiştir [5].
+
+CNN ve Transformer bileşenlerinin birleştirildiği hibrit mimariler, hem yerel hem
+de global örüntülerin eşzamanlı öğrenilmesini sağlamaktadır. Bir çalışmada, Stockwell
+dönüşümü ile frekans domain öznitelik çıkarımının ardından CNN-Transformer hibrit
+modeli, aritmi sınıflandırmasında geleneksel CNN ve LSTM modellerini aşan bir
+performans sergilemiştir [5]. Bu hibrit yaklaşımın temel avantajı, CNN'in lokal patern
+algılama gücünü Transformer'ın uzun menzilli bağımlılık modelleme yeteneğiyle
+harmanlayarak, EKG sinyalinin çok ölçekli yapısını daha etkili bir şekilde temsil
+edebilmesidir. Özellikle, ST-T segment değişikliklerinin tespitinde, Transformer'ın
+global konteksti değerlendirme yeteneği, yalnızca lokal özelliklere odaklanan
+CNN'lerden belirgin üstünlük sağlamıştır.
+
+Ancak, bu çalışmanın da sınırlılığı, model karmaşıklığının artması nedeniyle
+yorumlanabilirliğin azalması ve klinik ortamda hesaplama kaynaklarının sınırlı olduğu
+
+durumlarda uygulanabilirlik sorunlarıdır. Hibrit modellerin eğitim süresi, sade CNN
+modellerine kıyasla 2-3 kat daha uzun olabilmekte ve inference latency artışı, gerçek
+zamanlı klinik uygulamalarda sorun yaratabilmektedir. Ayrıca, hibrit modellerin farklı
+bileşenlerinin (CNN, Transformer) hiperparametre optimizasyonu, tek tip modellere
+kıyasla daha zorlu bir süreçtir. Bu çalışmalar, derin öğrenme yaklaşımlarının EKG
+sınıflandırmasında yüksek doğruluk oranlarına ulaşabileceğini göstermektedir. Ancak,
+çoğu çalışma, tek bir modelin performansını maksimize etmeye odaklanmakta ve
+modelin farklı patoloji tipleri veya hasta grupları üzerindeki güvenilirliği, uyuşmazlık
+durumlarında nasıl davrandığı ve üretim ortamındaki operasyonel dayanıklılığı
+konularında sınırlı bilgi sunmaktadır. Bu proje, bu boşluğu doldurmak amacıyla, farklı
+görevler için uzmanlaşmış çoklu modellerin orkestrasyonu ve bu modeller arasında
+tutarlılık kontrolü yaklaşımını benimsemektedir.
+
+2.3 MİYOKARD ENFARKTÜSÜ TESPİTİ VE ANATOMİK
+LOKALİZASYON
+MI'nin erken ve doğru tespiti, hasta prognozu ve tedavi planlaması açısından
+hayati önem taşımaktadır. Geleneksel klinik yaklaşımda, kardiyologlar Q dalgası, ST
+segment elevasyonu ve T dalgası inversiyonu gibi EKG belirteçlerini değerlendirerek
+MI lokalizasyonunu tahmin etmektedir. Bu belirteçler, koroner arterlerdeki tıkanıklığın
+kalbin hangi bölgesini etkilediğini dolaylı olarak göstermekte ve acil müdahale
+stratejisinin belirlenmesinde kritik rol oynamaktadır. Örneğin, II, III ve aVF
+derivasyonlarındaki ST elevasyonu inferior MI'yi işaret ederken, V1-V4
+derivasyonlarındaki değişiklikler anterior MI'yi göstermektedir. Ancak, bu yöntem
+özellikle çoklu damar bölgesini etkileyen MI'lerde düşük duyarlılık göstermektedir
+[1].Wang ve arkadaşlarının (2025) yaptığı kapsamlı bir çalışmada, deneyimli
+kardiyologların görsel EKG değerlendirmesinde, özellikle left circumflex (LCX)
+bölgesinde %15 gibi düşük bir duyarlılık, çoklu damar tutulumunda (double vessel
+disease, DVD) %24 ve üç damar tutulumunda (triple vessel disease, TVD) %4 gibi
+kabul edilemez düzeyde düşük doğruluklar saptanmıştır. Bu bulgular, manuel
+değerlendirmenin insan kaynaklı yorgunluk, deneyim farklılıkları ve subjektif yorum
+faktörlerinden etkilendiğini ve özellikle karmaşık vakalarda güvenilirliğinin ciddi
+ölçüde düştüğünü ortaya koymaktadır.
+
+Yapay zeka destekli yaklaşımlar, bu sınırlamaları aşmada belirgin avantajlar
+sunmaktadır. Wang ve arkadaşları (2025), biyosimülasyon modeli kullanarak eğitilen
+AI-MI-12ECG adlı bir derin öğrenme modeli geliştirmiş ve bu modelin, 182 MI
+hastasında geç gadolinyum tutulumu (LGE) CMR ile karşılaştırıldığında, LAD (Left
+Anterior Descending), RCA (Right Coronary Artery) ve LCX bölgelerinde sırasıyla
+0.95, 0.97 ve 0.91 doğruluk elde ettiğini göstermiştir. Modelin özellikle dikkat çekici
+yönü, transmembran potansiyel (TMP) yeniden yapılandırması yoluyla MI
+lokalizasyonunu 17-segment kalp modelinde (AHA segmentasyon modeli)
+haritalayabilmesidir. Bu yaklaşım, 50-150 elektrot gerektiren geleneksel
+elektrokardiyografik görüntüleme (ECGi) sistemlerine kıyasla, yalnızca standart 12-
+derivasyonlu EKG kullanarak septal fibrozis tespitinde dahi yüksek doğruluk
+sağlamıştır.
+
+Ancak, bu çalışmanın bir sınırlılığı, hasta kohortunun görece küçük olması (182
+hasta) ve modelin farklı hasta demografileri, komorbidite profilleri (diyabet,
+hipertansiyon, kronik böbrek yetmezliği) ve farklı hastane ortamlarındaki EKG
+cihazlarına genelleme kapasitesinin yeterince test edilmemiş olmasıdır. Ayrıca,
+biyosimülasyon modelleri (örneğin, kalp elektrofizyolojisi simülasyonu) gerçek hasta
+varyasyonlarının tamamını yansıtmayabilir ve modelin sentetik verilere aşırı uyum
+sağlama (overfitting) riski mevcuttur [1]. Başka bir sınırlama, modelin akut MI ile
+kronik MI (eski enfarkt skarı) arasındaki ayrımı yapma kapasitesinin
+değerlendirilmemiş olmasıdır; bu klinik pratikte önemli bir ayrım olup, tedavi
+yaklaşımını doğrudan etkiler.
+
+Anatomik lokalizasyon görevinde, multi-label sınıflandırma yaklaşımları özellikle
+önem taşımaktadır. Zira bir hastada aynı anda birden fazla anatomik bölgede MI
+bulunabilmektedir. PTB-XL veri setinde, inferior MI (IMI: 2,685 kayıt) ve anteroseptal
+MI (ASMI: 2,363 kayıt) en sık görülen lokalizasyon tipleridir [3]. Bu veri setinin
+sunduğu hiyerarşik etiket yapısı (superclass: MI, subclass: AMI, ASMI, ALMI, IMI,
+LMI), modellerin hem genel MI tespiti hem de ince taneli lokalizasyon görevlerinde
+değerlendirilmesine olanak tanımaktadır. Ancak, literatürdeki çoğu çalışma, ya yalnızca
+MI varlığını tespit etmekte (binary classification) ya da lokalizasyonu tek-etiketli bir
+problem olarak ele almaktadır [1].
+
+Çoklu-etiketli lokalizasyon yaklaşımları, daha gerçekçi klinik senaryoları
+yansıtmasına rağmen, model eğitiminde dengesiz sınıf dağılımı (örneğin, posterior
+MI'nın nadir görülmesi: ~400 kayıt) ve bazı SCP kodlarının birden fazla anatomik
+bölgeye karşılık gelmesi (örneğin, ILMI - inferolateral MI'nın hem IMI hem de LMI
+bileşenleri içermesi) gibi zorluklar yaratmaktadır. Bu proje, literatüre katkısı, MI
+tespitini iki bağımsız model (superclass ve binary MI) ile çapraz doğrulama yaparak
+güvenilirliği artırması ve lokalizasyon görevini yalnızca MI varlığı onaylandığında
+devreye alan gating mekanizması ile gereksiz false positive lokalizasyon tahminlerini
+önlemesidir. Ayrıca, PTB-XL'deki SCP kodlarının 5 anatomik bölgeye türetilmesi
+(derived labeling) sürecinin dokümante edilmesi ve bu etiket uzayının bir fingerprint ile
+korunması, literatürde nadiren ele alınan bir etiket yönetimi yaklaşımı sunmaktadır.
+
+2.4 PTB-XL VERİ SETİ: STANDARTLAŞMA VE BENCHMARK ROLÜ
+Makine öğrenmesi algoritmalarının geliştirilmesinde en büyük engellerden biri,
+büyük ölçekli, çeşitli ve açık erişimli veri setlerinin eksikliğidir. PTB-XL veri seti, bu
+açığı kapatmak amacıyla Wagner ve arkadaşları (2020) tarafından sunulmuştur. Veri
+seti, 18,885 hastadan alınan 21,837 adet 10-saniyelik 12-derivasyonlu EKG kaydını
+içermekte olup, her kayıt iki kardiyolog tarafından SCP-ECG standardına (Standardized
+Communication Protocol for Computer Assisted Electrocardiography) uygun şekilde 71
+farklı tanı ifadesi ile çoklu etiketlenmiştir. Veri setinin en ayırt edici özelliklerinden biri,
+hiyerarşik etiket organizasyonudur: 5 ana sınıf (NORM: normal, CD: kardiyak hastalık,
+MI: miyokard enfarktüsü, HYP: hipertrofi, STTC: ST-T değişiklikleri) ve 24 alt sınıf.
+Bu yapı, araştırmacıların farklı detay seviyelerinde sınıflandırma modelleri
+geliştirmelerine imkan tanımakta ve hem genel patoloji taraması hem de spesifik alt-tip
+tespiti görevlerinin aynı veri seti üzerinde karşılaştırılmasını mümkün kılmaktadır [3].
+
+PTB-XL'in bir diğer güçlü yanı, gerçek dünya koşullarını yansıtan sinyal kalitesi
+çeşitliliğidir. Kayıtların %77.01'i en yüksek kalitedeyken (quality=high), geri kalan
+kısımda baseline drift (izoelektrik çizginin kayması), elektriksel gürültü (50/60 Hz
+powerline interference), kas artefaktları (EMG gürültüsü) ve elektrot problemleri (zayıf
+temas, hareketli elektrot) gibi artefaktlar bulunmaktadır [3]. Bu çeşitlilik, makine
+öğrenmesi algoritmalarının klinik ortamda karşılaşabileceği değişken koşullara karşı
+dayanıklılığının (robustness) test edilmesinde kritik öneme sahiptir. Gerçek klinik
+ortamda, tüm EKG kayıtlarının optimal kalitede olması beklenemez; hasta hareketi,
+elektrot yerleşim hataları ve cihaz kalibrasyonu sorunları sıklıkla görülmektedir.
+
+Nitekim, stratified 10-fold cross-validation önerileriyle birlikte sunulan bu veri
+seti, literatürde bir benchmark referansı haline gelmiştir. Veri setinin açık erişimli
+olması ve PhysioNet platformu üzerinden ücretsiz sunulması, farklı araştırma
+gruplarının sonuçlarını karşılaştırılabilir bir şekilde raporlaması büyük avantaj
+sağlamaktadır. Wagner ve arkadaşları , her fold için hasta bazında ayrıştırma yapmış
+(patient-wise split), böylece aynı hastanın kayıtlarının hem eğitim hem de test setinde
+bulunması ve veri sızıntısı (data leakage) riskini önlemişlerdir. Bu, özellikle gerçekçi
+performans değerlendirmesi için kritik önem taşımaktadır.
+
+PTB-XL üzerine yapılan çalışmalar, çeşitli derin öğrenme mimarilerinin
+performansını karşılaştırmalı olarak ortaya koymuştur. Örneğin, ResNet ve Inception
+gibi mimarilerin transfer öğrenme ile küçük veri setlerinde umut verici sonuçlar verdiği,
+ancak geniş veri setlerinde scratch'ten eğitimin daha etkin olabileceği gösterilmiştir [5].
+Bu bulgular, veri setinin büyüklüğünün ve çeşitliliğinin, model seçimi ve eğitim
+stratejisi üzerindeki etkisini vurgulamaktadır. Transfer öğrenme, özellikle ImageNet
+gibi görsel veri setleri üzerinde ön-eğitilmiş modellerin 1D EKG sinyallerine
+adaptasyonu bağlamında tartışmalı bir konudur; zira görsel öznitelikler ile temporal
+EKG özellikleri arasında doğrudan bir benzerlik bulunmamaktadır [4].
+
+Bununla birlikte, PTB-XL'in bazı sınırlılıkları da mevcuttur. Veri seti, ağırlıklı
+olarak Avrupa popülasyonundan (Almanya) toplanmış olup, farklı etnik gruplar ve
+
+coğrafi bölgelerdeki hasta demografilerini yeterince temsil etmeyebilir. Özellikle
+Afrika, Asya ve Latin Amerika popülasyonlarında EKG paternlerinin farklılık
+gösterebileceği bilinmektedir (örneğin, erken repolarizasyon paterninin prevalansı etnik
+gruplara göre değişir). Ayrıca, bazı nadir patolojilerin (örneğin, posterior MI: ~400
+kayıt) kayıt sayısı düşüktür ve bu durum, dengesiz sınıf dağılımı nedeniyle model
+eğitiminde zorluklar yaratmaktadır. Etiketleme sürecinde, iki kardiyolog arasındaki
+uyuşmazlıkların nasıl çözüldüğü ve etiket güvenilirlik skorlarının (likelihood scores: 0,
+50, 100) yorumlanması konuları, bazı belirsizlikler içermektedir. Wagner ve arkadaşları
+, uyuşmazlık durumunda üçüncü bir uzmanın devreye girdiğini belirtmekle birlikte, bu
+sürecin detayları net değildir.
+
+Bu proje, PTB-XL'i temel veri kaynağı olarak kullanmakta, ancak etiket türetme
+sürecini (derived labeling) açıkça dokümante ederek ve label space fingerprint
+mekanizması ile etiket bütünlüğünü koruyarak, bu belirsizlikleri azaltmayı
+hedeflemektedir. Özellikle, SCP kodlarından anatomik lokalizasyon etiketlerine
+eşleştirme (mapping) sürecinin versiyonlanması ve değişikliklerin izlenebilirliği, üretim
+ortamında etiket tutarlılığını garanti etmek için kritik önem taşımaktadır.
+
+2.5 HİBRİT MİMARİ YAKLAŞIMLAR: CNN VE XGBOOST
+ENTEGRASYONU
+CNN'lerin öznitelik çıkarımındaki başarısının, ağaç tabanlı gradient boosting
+algoritmaları ile birleştirilmesi, son yıllarda dikkat çeken bir yaklaşım olmuştur.
+XGBoost (Extreme Gradient Boosting), yüksek boyutlu öznitelik uzaylarında doğrusal
+olmayan etkileşimleri modellemede, dengesiz veri setlerinde dayanıklılık göstermede ve
+kalibre edilmiş tahminler üretmede güçlü bir performans sergilemektedir. Hibrit CNN-
+XGBoost pipeline'ı, CNN'in lokal patern öğrenme kapasitesini, XGBoost'un global
+karar sınırlarını optimize etme yeteneği ile harmanlayarak, hem doğruluk hem de
+yorumlanabilirlik açısından avantaj sağlamaktadır [2]. CNN, ham sinyalden otomatik
+olarak öznitelik çıkarırken (representation learning), XGBoost bu öznitelikler üzerinde
+ensemble öğrenme yaparak, bireysel ağaçların zayıf yönlerini telafi etmekte ve robust
+bir sınıflandırıcı oluşturmaktadır.
+
+Literatürdeki bazı çalışmalar, CNN ile çıkarılan özniteliklerin (örneğin, son fully
+connected katmanından önceki embedding vektörü) XGBoost veya diğer gradient
+
+boosting yöntemlerine (LightGBM, CatBoost) girdi olarak verilmesinin, yalnızca CNN
+kullanan modellere kıyasla özellikle dengesiz veri setlerinde daha iyi sonuçlar verdiğini
+göstermiştir. XGBoost'un ağaç tabanlı yapısı, kategorik öznitelikleri doğrudan
+işleyebilmesi, eksik veri ile başa çıkabilmesi (missing value handling) ve aşırı
+öğrenmeyi (overfitting) önlemek için düzenlileştirme (regularization) parametreleri
+(alpha, lambda) sunması gibi avantajlar sağlamaktadır. Ayrıca, XGBoost'un ürettiği
+tahminler, sigmoid veya softmax fonksiyonları ile CNN'in çıktıları ile birleştirilerek
+(ensemble stacking), her iki modelin güçlü yönlerinden faydalanılabilmektedir.Ancak,
+hibrit sistemlerin dezavantajı, model karmaşıklığının artması, iki farklı bileşenin
+hiperparametre optimizasyonunun ayrı ayrı yapılması gerekliliği (örneğin, CNN için
+learning rate, dropout; XGBoost için max_depth, n_estimators) ve üretim ortamında iki
+ayrı modelin senkronizasyonunun yönetilmesi zorluklarıdır. Pipeline'da CNN'in
+embedding'lerinin boyutu değiştiğinde, XGBoost modelinin yeniden eğitilmesi gerekir;
+aksi takdirde feature mismatch hatası oluşur.
+
+Ancak hibrit sistemlerin üretim ortamında kullanımında kritik bir risk faktörü
+bulunmaktadır: "silent failure". XGBoost, girdi özniteliklerinin yanlış sırada, yanlış
+ölçekte veya yanlış boyutta olması durumunda çoğu zaman hata vermez; yalnızca
+mantıksız skorlar üretir. Bu durum, CNN backbone'unun değişmesi (örneğin embedding
+boyutunun 64'ten 128'e çıkması), öznitelik sırasının permüte edilmesi (örneğin,
+feature_0 ve feature_1'in yer değiştirmesi) veya StandardScaler'ın farklı bir veri seti
+üzerinde fit edilmiş olması gibi senaryolarda ortaya çıkabilir [2]. Örneğin, eğitim
+sırasında scaler, eğitim setinin mean ve std değerleri ile fit edilmişse, ancak üretim
+ortamında farklı bir scaler kullanılırsa, öznitelikler yanlış normalize edilir ve XGBoost
+mantıksız tahminler üretir.
+
+Literatürde, hibrit modellerin performans avantajları sıklıkla vurgulanırken, bu tür
+üretim ortamı risklerinin sistematik bir şekilde yönetilmesi konusu ihmal edilmektedir.
+Bazı çalışmalar, model versiyonlama ve meta-veri yönetimi konularına değinse de,
+öznitelik uzayının bütünlüğünü garanti eden mekanizmalar (örneğin, feature schema
+lock, feature name validation) nadiren uygulanmaktadır [6].
+
+Bu proje, hibrit CNN-XGBoost mimarisini benimserken, aynı zamanda üretim
+güvenilirliği için feature schema doğrulama mekanizması entegre etmektedir. Her
+
+XGBoost modeli için, eğitim sırasında kullanılan CNN embedding boyutu, öznitelik
+isimleri ve scaler parametreleri (mean, std) bir "feature_schema.json" dosyası ile
+kaydedilmekte ve çalışma zamanında (runtime) bu bilgiler doğrulanmaktadır. Bu
+yaklaşım, literatürdeki hibrit model çalışmalarından farklılaşarak, yalnızca performans
+değil aynı zamanda operasyonel güvenlik boyutunu da ele almaktadır.
+
+2.6 AÇIKLANABİLİR YAPAY ZEKA (XAI) VE KLİNİK KARAR DESTEK
+SİSTEMLERİ
+Yapay zeka sistemlerinin klinik ortamda kabul görmesindeki en büyük
+engellerden biri, "kara kutu" doğasıdır. Sağlık profesyonelleri, modelin hangi bilgilere
+dayanarak karar verdiğini anlamadan, bu kararları klinik uygulamada kullanma
+konusunda tereddüt yaşamaktadır [7]. Bu bağlamda, açıklanabilir yapay zeka teknikleri,
+modelin karar mekanizmasını görselleştirerek klinisyenlere şeffaflık sağlamaktadır.
+XAI, yalnızca modelin "ne kadar doğru" olduğunu değil, aynı zamanda "neden bu kararı
+verdiğini" açıklayarak, klinisyenlerin modele olan güvenini artırmakta ve hatalı
+tahminlerin tespit edilmesini kolaylaştırmaktadır. Özellikle tıbbi malpraktis davalarında,
+AI sisteminin kararlarının açıklanabilir olması, yasal sorumluluk açısından kritik önem
+taşımaktadır.
+
+Gradient-weighted Class Activation Mapping (Grad-CAM), CNN tabanlı
+modellerde en yaygın kullanılan XAI yöntemlerinden biridir. Grad-CAM, modelin son
+konvolüsyon katmanındaki aktivasyonlar ile sınıf skorlarının gradyanlarını birleştirerek,
+girdi sinyalinin hangi bölgelerinin karar için kritik olduğunu gösteren bir ısı haritası
+üretir. EKG bağlamında, Grad-CAM'ın anterior veya inferior derivasyonlardaki kritik
+bölgeleri (örneğin, ST segmenti, Q dalgası) vurgulaması, klinisyenlerin modelin kararını
+doğrulama sürecini kolaylaştırmaktadır [1]. Örneğin, bir MI tespitinde, Grad-CAM'ın
+V2-V4 derivasyonlarının ST segmentinde yüksek aktivasyon göstermesi, modelin klinik
+olarak anlamlı özelliklere odaklandığını gösterir. Ancak, Grad-CAM'ın bazı sınırlılıkları
+vardır: düşük uzamsal çözünürlük (özellikle derin ağlarda, son konvolüsyon katmanının
+çıktısı küçük boyutta olduğundan detay kaybı oluşur), yalnızca pozitif katkıları
+vurgulama (negatif kanıtları, yani "bu bölgede MI belirtisi yok" bilgisini göstermeme)
+ve bazı durumlarda artefaktlara veya gürültülü bölgelere odaklanma.
+
+Bu nedenle, Grad-CAM çıktılarının "sanity check" testleri ile doğrulanması
+önerilmektedir; örneğin, modelin ağırlıkları rastgele başlatıldığında (randomization test)
+Grad-CAM'ın anlamlı bölgeleri vurgulamaya devam etmesi, yöntemin güvenilirliğini
+
+sorgulatır. Eğer rastgele bir model de aynı bölgeleri vurguluyorsa, Grad-CAM gerçek
+model davranışını yansıtmıyor demektir. Hibrit sistemlerde ise, XGBoost bileşeni için
+SHAP (SHapley Additive exPlanations) değerleri kullanılmaktadır. SHAP, oyun
+teorisindeki Shapley değerlerinden türetilmiş bir yöntemdir ve her bir özniteliğin model
+çıktısına olan katkısını matematiksel olarak adil bir şekilde dağıtarak, hangi embedding
+boyutlarının kararı en çok etkilediğini sayısal olarak göstermektedir. SHAP, model-
+agnostic bir yöntem olup, herhangi bir makine öğrenmesi modeline uygulanabilir;
+ancak, ağaç tabanlı modeller için optimize edilmiş TreeExplainer algoritması, özellikle
+hızlı ve doğru sonuçlar sunmaktadır. TreeExplainer, XGBoost'un ağaç yapısını
+doğrudan kullanarak, her bir özniteliğin katkısını hesaplar ve bu süreç, LIME gibi
+pertürbasyon tabanlı yöntemlere kıyasla çok daha hızlıdır.Grad-CAM ve SHAP'ın
+birlikte kullanımı, çok modaliteli açıklanabilirlik sağlayarak, hem görsel (ısı haritası)
+hem de sayısal (feature importance) kanıt sunmaktadır. Bir çalışmada, bu
+kombinasyonun, radyologların modele olan güvenini %27 oranında artırdığı ve karar
+verme süresini %13 kısalttığı rapor edilmiştir. Ancak, bu çalışmanın sınırlılığı, güven
+artışının subjektif anketlerle ölçülmesi (Likert scale) ve gerçek klinik karar süreçlerinde
+XAI'nin pratik faydasının uzun vadeli bir şekilde değerlendirilmemiş olmasıdır.
+Prospektif randomize kontrollü çalışmalar (RCT), XAI'nin klinik sonuçlar üzerindeki
+gerçek etkisini değerlendirmek için gereklidir. Bununla birlikte, XAI tekniklerinin
+güvenilirliği de sorgulanmalıdır. Grad-CAM'ın ürettiği ısı haritalarının, modelin
+gerçekte kullandığı bilgileri yansıtıp yansıtmadığı, "sanity check" mekanizmaları ile
+doğrulanmalıdır. Özellikle, modelin etiket uzayında veya veri dağılımında meydana
+gelen drift durumlarında, XAI çıktılarının tutarlılığının izlenmesi, üretim güvenilirliği
+açısından kritik öneme sahiptir. Bu proje, XAI bileşenlerini sistemin opsiyonel
+eklentileri olarak değil, sistem mimarisinin organik bir parçası olarak
+konumlandırmakta ve artifact discovery mekanizması ile API yanıt sözleşmesine
+(AIResult contract) entegre etmektedir. Bu yaklaşım, XAI'nin yalnızca araştırma amaçlı
+değil, üretim ortamında operasyonel bir bileşen olarak kullanılabilirliğini artırmaktadır.
+
+2.7 ÜRETİM SİSTEMLERİNDE MODEL İZLEME VE GÜVENİLİRLİK
+CardioGuard-AI gibi çok modelli sistemlerde, drift izleme ek katmanlar
+gerektirmektedir. Her bir modelin (superclass, binary MI, localization) çıktı
+
+dağılımlarının izlenmesine ek olarak, etiket uzayı fingerprint doğrulaması da
+yapılmalıdır. Örneğin, MI lokalizasyon modelinin eğitildiği SCP kod-bölge eşleşmesi
+değişirse (örneğin, IPLMI'nın artık IMI, LMI ve PMI'ya eşleştirilmesi yerine yalnızca
+IMI ve LMI'ya eşleştirilmesi), modelin üretim ortamındaki çıktıları artık geçersiz hale
+gelecektir. Bu durumda, model teknik olarak çalışmaya devam edebilir ancak semantik
+olarak yanlış sonuçlar üretir. Bu nedenle, mapping_fingerprint gibi versiyonlama
+mekanizmalarının entegrasyonu, üretim güvenilirliği için vazgeçilmezdir. Etiket
+uzayının bir hash değeri (örneğin, SHA-256) ile korunması ve her inference sırasında bu
+hash'in doğrulanması, bu tür sessiz hataları önleyebilir.
+
+Ancak, literatürde çoklu model orkestrasyonu kullanan sistemlerde drift izleme
+stratejileri yeterince ele alınmamıştır; çoğu çalışma, tek bir modelin drift'ini izlemeye
+odaklanmaktadır [6]. Çok modelli sistemlerde, bir modelin drift'i diğer modellerin
+performansını etkileyebilir. Örneğin, superclass modelinde drift oluşursa ve MI sınıfını
+daha sık tahmin etmeye başlarsa, lokalizasyon modeline daha fazla yük biner ve false
+positive lokalizasyonlar artabilir. Bu nedenle, modeller arası etkileşimlerin izlenmesi ve
+uyuşmazlık oranlarının (disagreement rate) takip edilmesi, sistem seviyesinde drift
+tespiti için gereklidir.
+
+Otomasyonun model yaşam döngüsü yönetimindeki rolü de vurgulanmalıdır.
+MLOps pratikleri, model izleme, yeniden eğitim ve dağıtım süreçlerini otomatize
+ederek, drift tespiti sonrası müdahale süresini kısaltmaktadır. Otomatik uyarılar ve eşik
+tabanlı tetikleyiciler (threshold-based triggers), veri bilimi ekiplerinin manuel
+gözleminden daha hızlı tepki verilmesini sağlamakta ve kritik tıbbi uygulamalarda hasta
+güvenliğini korumaktadır [6]. Örneğin, prediction drift PSI > 0.2 eşiğini aştığında,
+otomatik olarak Slack veya e-posta bildirimi gönderilebilir ve model performansı daha
+detaylı analiz için işaretlenebilir.
+
+Ancak, otomasyon süreçlerinin kendisi de hatalara açıktır; örneğin, yanlış
+yapılandırılmış bir otomatik yeniden eğitim pipeline'ı, performansı düşük bir modeli
+üretim ortamına dağıtabilir veya yanlış veri seti ile eğitim yapabilir. Bu nedenle, insan-
+
+in-the-loop (HITL) yaklaşımları, kritik kararlarda insan onayını gerekli kılarak,
+otomasyon risklerini azaltmaktadır. Örneğin, yeniden eğitilmiş bir modelin üretim
+ortamına dağıtımından önce, veri bilimcilerinin ve klinik uzmanların validation
+metriklerini incelemesi ve onaylaması gerekebilir. Ayrıca, canary deployment veya
+blue-green deployment stratejileri, yeni modelin önce küçük bir kullanıcı grubunda test
+edilmesini sağlayarak, potansiyel hataların tüm sistemi etkilemesini önler [8].
+
+Üretim ortamında model güvenilirliğinin bir diğer boyutu, sistem dayanıklılığıdır
+(resilience). Bir modelin tamamen başarısız olması durumunda (örneğin, model
+dosyasının bozulması, dependency versiyonlarının uyuşmaması), sistemin nasıl
+davranacağı önceden tanımlanmalıdır. Fallback mekanizmaları, örneğin daha basit bir
+rule-based sisteme geçiş veya "model not available" mesajı ile kullanıcıyı bilgilendirme,
+kritik sağlık uygulamalarında hasta güvenliğini korumak için gereklidir. Bu proje, fail-
+fast startup davranışı ve comprehensive logging mekanizmaları ile, üretim ortamında
+oluşabilecek hataların hızlı tespit edilmesini ve müdahale edilmesini hedeflemektedir.
+
+2.8 BU PROJENİN LİTERATÜRDEKİ KONUMLANDIRMASI
+Literatür incelemesi, EKG tabanlı MI tespiti ve lokalizasyonu alanında önemli
+ilerlemeler kaydedildiğini göstermekle birlikte, bazı kritik boşlukların hala mevcut
+olduğunu ortaya koymaktadır.
+
+İlk olarak, çoğu çalışma tek bir modelin performansına odaklanmakta, çok modelli
+pipeline'ların tutarlılık doğrulaması ve uyuşmazlık yönetimi konularında yeterli derinlik
+sağlamamaktadır [4]. CardioGuard-AI'nin önerdiği "consistency guard" yaklaşımı, üç
+farklı modelin çıktılarını entegre ederek, tek bir modelin yanılgısının sistem seviyesinde
+hata üretmesini engellemektedir. Bu çok katmanlı doğrulama mekanizması, literatürdeki
+bu boşluğu doldurmaya yönelik özgün bir katkıdır.
+
+İkinci olarak, üretim ortamında silent failure risklerinin yönetimi, özellikle hibrit
+sistemlerde, literatürde yeterince ele alınmamıştır. Feature schema lock, fingerprint
+
+validation ve fail-fast startup davranışı gibi mekanizmaların sistematik entegrasyonu,
+gelecek çalışmalarda önceliklendirilmelidir [2]. Bu proje, üretim güvenilirliğini birincil
+tasarım gereksinimi olarak ele alarak bu boşluğa yanıt vermektedir.
+
+Üçüncü olarak, XAI tekniklerinin klinik faydalılığı kontrollü kullanıcı
+çalışmalarıyla daha derinlemesine araştırılmalıdır. Bu proje, XAI'yi opsiyonel eklenti
+değil sistemin organik bileşeni olarak konumlandırıp artifact discovery mekanizmasını
+API sözleşmesine entegre ederek operasyonel kullanılabilirliği artırmaktadır.
+
+Son olarak, MI lokalizasyonunda posterior MI gibi nadir tiplerin düşük temsili ve
+SCP kod eşleştirmesindeki belirsizlikler, gelecek araştırmalarda veri toplama stratejileri
+ve etiket kalitesi açısından ele alınmalıdır [3]. Bu proje, PMI'yı kapsam dışında
+bırakarak bu sınırlılığı açıkça dokümante etmekte ve gelecekte genişletilmesi gereken
+bir alan olarak işaretlemektedir. Özetle, bu çalışma klinik güvenilirlik, operasyonel
+dayanıklılık ve üretim güvenliği boyutlarında özgün katkılar sunarak EKG tabanlı AI
+sistemlerinin gerçek dünya uygulamalarına geçişinde karşılaşılan zorluklara bütüncül
+bir yaklaşım önermektedir.
+
+3 MATERYAL VE YÖNTEM
+Bu bölümde, CardioGuard-AI sisteminin geliştirilmesinde kullanılan veri seti,
+model mimarileri, hibrit yaklaşımlar, çoklu model orkestrasyonu, açıklanabilir yapay
+zeka bileşenleri ve üretim güvenilirliği mekanizmaları detaylı olarak açıklanmaktadır.
+Çalışmanın metodolojisi, yalnızca yüksek doğruluk oranına sahip bir model eğitmekle
+
+sınırlı kalmayıp, aynı zamanda klinik ortamda güvenilir ve sürdürülebilir bir karar
+destek sistemi tasarlamayı hedeflemektedir. Bu kapsamda, veri setinin hazırlanması,
+etiket türetme süreçleri, model seçim gerekçeleri, orkestrasyona dayalı karar
+mekanizmaları ve fail-fast güvenlik doğrulamaları sistematik bir şekilde ele
+alınmaktadır.
+
+3.1 VERİ SETİ: PTB-XL
+3.1.1 VERİ SETİNİN ÖZELLİKLERİ
+Çalışmada, PhysioNet platformu üzerinden açık erişimli olarak sunulan PTB-XL
+veri seti kullanılmıştır. PTB-XL, Wagner ve arkadaşları (2020) tarafından EKG
+sınıflandırma çalışmaları için standart bir benchmark olarak geliştirilmiş olup, 18,885
+benzersiz hastadan toplanan 21,837 adet 10 saniyelik 12-derivasyonlu EKG kaydını
+içermektedir. Veri setindeki her kayıt, 100 Hz örnekleme frekansında kaydedilmiş olup,
+her derivasyon için 1,000 örnek noktası bulunmaktadır. Bu yapı, modellerin girdi tensör
+boyutunu (12 × 1,000) olarak standartlaştırmaktadır
+
+Veri setinin en ayırt edici özelliklerinden biri, her kaydın iki bağımsız kardiyolog
+tarafından SCP-ECG (Standardized Communication Protocol for Computer Assisted
+Electrocardiography) standardına uygun şekilde etiketlenmiş olmasıdır. Toplam 71
+farklı tanı ifadesi, likelihood skorları (0, 50, 100) ile birlikte çoklu-etiket formatında
+sunulmaktadır. Bu likelihood skorları, etiketin güvenilirlik derecesini ifade etmekte
+olup, bazı kayıtlarda düşük güvenilirli etiketler bulunabilmektedir. Çalışmada, minimum
+likelihood politikası 0.0 olarak belirlenmiş, yani tüm likelihood seviyelerindeki etiketler
+dahil edilmiştir. Veri setinin sinyal kalitesi açısından çeşitlilik göstermesi, gerçek klinik
+koşulları yansıtma kapasitesini artırmaktadır. Kayıtların yaklaşık %77'si yüksek kalite
+olarak işaretlenmiş olup, geri kalan kısımda baseline drift, elektriksel gürültü (50/60 Hz
+powerline interference) ve kas artefaktları gibi çeşitli bozulmalar bulunmaktadır.
+
+3.1.2 VERİ BÖLÜNMESİ (SPLİT STRATEJİSİ)
+PTB-XL veri seti, hasta bazlı stratified 10-fold cross-validation yapısı ile
+sunulmaktadır. Bu çalışmada, Wagner ve arkadaşları (2020) tarafından önerilen standart
+bölünme stratejisi benimsenmiştir: Fold 1-8 eğitim seti (17,469 kayıt), Fold 9
+doğrulama seti (2,189 kayıt) ve Fold 10 test seti (2,179 kayıt) olarak ayrılmıştır. Bu
+
+stratejinin kritik önemi, veri bölünmesinin hasta bazında yapılması ve böylece aynı
+hastanın farklı kayıtlarının hem eğitim hem de test setinde bulunmamasını garanti
+etmesidir. Hasta bazlı bölünme, data leakage (veri sızıntısı) riskini önleyerek, modelin
+gerçek genelleme kapasitesinin daha doğru bir şekilde ölçülmesini sağlamaktadır.
+Sınıf dağılımının dengesiz olması (örneğin, NORM sınıfının diğer patolojilere kıyasla
+daha fazla örneğe sahip olması), model eğitiminde sınıf ağırlıklandırması (class
+weighting) stratejilerinin kullanılmasını gerekli kılmıştır. Eğitim aşamasında,
+BCEWithLogitsLoss fonksiyonu ile birlikte her sınıf için hesaplanan pozitif ağırlıklar
+(pos_weight) kullanılarak, azınlık sınıflarının öğrenilmesi teşvik edilmiştir.
+Şekil 1. Veri seti filtreleme ve etiket kaynağı (data provenance): PTB-XL ham veriden MI seçimi ve
+lokalizasyon için geçerli alt kümenin oluşturulması.
+
+Tablo 1. PTB-XL veri seti dağılımı (Train/Val/Test)
+Split Folds Kayıt Sayısı Toplama
+Oranı (%)
+Train 1-8 17,469 80.00
+Validation 9 2,189 10.02
+
+Test 10 2,179 9.98
+
+Toplam - 21,837 100.00
+
+3.1.3 ETİKET DÖNÜŞÜMLERİ VE TÜRETİLMİŞ ETİKET SİSTEMİ
+PTB-XL'deki 71 SCP kodunun model eğitimi için doğrudan kullanımı, hem
+hesaplama karmaşıklığını artırmakta hem de bazı nadir kodların düşük temsili nedeniyle
+öğrenme zorluğu yaratmaktadır. Bu nedenle, veri setinin hiyerarşik etiket yapısından
+yararlanılarak, SCP kodları 5 ana superclass'a (NORM, MI, STTC, CD, HYP) ve 24
+subclass'a eşlenmiştir. Bu eşleme, Wagner ve arkadaşları (2020) tarafından önerilen
+mapping tablosuna dayanmaktadır.
+
+NORM Türetimi (Derived NORM): NORM sınıfı, diğer superclass'ların aksine,
+doğrudan bir SCP kodundan değil, türetilmiş bir kuralla elde edilmektedir. Bir EKG
+kaydının NORM olarak değerlendirilmesi, dört patoloji sınıfının (MI, STTC, CD, HYP)
+hiçbirinin belirli bir eşik değerin üzerinde olasılığa sahip olmaması durumunda
+gerçekleştirilmektedir. Matematiksel olarak, NORM skoru şu şekilde hesaplanmaktadır:
+
+𝑃{ேைோெ}= 1 − \𝑚𝑎𝑥൫𝑃{ெூ},𝑃{ௌ்்஼},𝑃{஼஽},𝑃{ு௒௉}൯
+Bu türetme yaklaşımının seçilmesinin temel gerekçesi, NORM'un bir hastalık kategorisi
+değil, patolojilerin yokluğunu temsil eden bir durum olmasıdır. Alternatif olarak,
+NORM'u beşinci bir sınıf olarak doğrudan eğitmek de mümkün olsa da, bu durumda
+patolojilerin kombinasyonları (örneğin, hem MI hem STTC) ile NORM arasındaki
+ayrımın net bir şekilde yapılması zorlaşmaktadır. Türetilmiş NORM yaklaşımı, sistemin
+mantıksal tutarlılığını artırmakta ve API yanıt sözleşmesinde (AIResult v1.0) açıkça
+dokümante edilmektedir.
+
+Şekil 2. MI lokalizasyon etiket haritalama süreci ve mapping fingerprint: SCP kodlarından hedef
+lokalizasyon sınıf gruplarına dönüşüm.
+
+3.1.4 VERİ ÖN İŞLEME
+Veri ön işleme aşaması, model eğitimi öncesinde kritik bir role sahiptir. Z-score
+normalizasyonu, her derivasyon için ayrı ayrı uygulanarak, farklı derivasyonlardaki
+sinyal seviyesi farklılıklarını ortadan kaldırmaktadır. Girdi tensörlerinin şekli (batch, 12,
+1000) şeklinde validasyonu, eğitim sırasında hata oluşmasını engeller. Ayrıca, eksik
+veya bozuk verilerin filtrelenmesi için QC (Quality Control) flag değerleri kontrol
+edilmektedir.
+3.2 MODEL MİMARİSİ
+3.2.1 ECGBACKBONE (CNN TEMEL MİMARİSİ)
+ECGBackbone, kardiyak sinyallerdeki temporal desenleri öğrenmek için özel
+olarak tasarlanmış bir 1D CNN mimarisidir. Mimari giriş olarak 12-derivasyonlu EKG
+sinyalini (12×1000) alır ve işlemler sırasında Conv1d katmanları, BatchNormalization
+ve ReLU aktivasyonlarını sırayla uygular. Her Conv1d katmanı kernel boyutu 7 ile
+yapılandırılmış olup, aralarında Dropout(0.3) düzenleme mekanizması bulunmaktadır.
+Sonuçta, AdaptiveAvgPool1d katmanı aracılığıyla 64 boyutlu bir embedding vektörü
+elde edilmektedir.
+Tasarım kararı olarak 1D-CNN seçilmesinin temel gerekçeleri şunlardır: Birincisi,
+1D konvolüsyonlar, EKG sinyalindeki QRS kompleksi, ST segmenti ve T dalgası gibi
+karakteristik temporal özellikleri etkili bir şekilde öğrenmektedir. İkincisi, 2D-CNN'e
+kıyasla önemli ölçüde daha az parametre gerektirmektedir ve bu sayede daha hızlı
+eğitim ve çıkarım süresi sağlamaktadır. Üçüncüsü, transfer learning uygulamalarında
+kolaylık sağlamakta ve önceden eğitilmiş ağ ağırlıklarından yararlanabilmektedir.
+Şekil 3. ECGBackbone CNN mimarisi (katman analizi): Conv1D tabanlı bloklar ile gömlem
+(embedding) üretimi.
+
+3.2.2 ÜÇ MODEL YAKLAŞIMI
+CardioGuard-AI, üç ayrı nöral ağ modelinin özelleştirilmiş görevler için eğitilmesi
+ve ardından orkestrasyonlu bir şekilde entegre edilmesi prensibine dayanmaktadır. Bu
+multi-model yaklaşımı, sistemin güvenilirliğini ve açıklanabilirliğini artırmakta, ayrıca
+farklı klinik senaryolara uyum sağlamayı mümkün kılmaktadır.
+
+Model 1: Superclass CNN (4-etiket sınıflandırıcı)
+Bu model, beş temel superclass'tan dört tanesinin (MI, STTC, CD, HYP)
+olasılıklarını tahmin etmek üzere eğitilmiştir. Çıktı boyutu 4 olup, multi-label
+sınıflandırma için BCEWithLogitsLoss fonksiyonu ve sınıf ağırlıklandırması
+kullanılmıştır. Model kontrol noktası (checkpoint) checkpoints/ecgcnn_superclass.pt
+olarak kaydedilmektedir.
+
+Model 2: Binary MI CNN (1-etiket sınıflandırıcı)
+Bu model, MI varlığının ikili (binary) tahminini gerçekleştirir. Çıktı boyutu 1
+olup, sigmoid aktivasyonu ile [0, 1] aralığına normalleştirilir. Rol olarak, Superclass
+modeli ile uyum kontrolü (Consistency Guard) sağlayarak, farklı modellerin karar
+farklılıklarını tespit etmek ve gözden geçirme gereksinimi olan durumları
+işaretlemektedir. Checkpoint: checkpoints/ecgcnn.pt
+
+Model 3: MI Lokalizasyon CNN (5-etiket sınıflandırıcı)
+Bu model, MI'nin anatomik bölge tespitine odaklanmıştır. Çıktı boyutu 5 olup,
+multi-hot encoding ile AMI, ASMI, ALMI, IMI ve LMI bölgeleri sınıflandırılır. Eğitim
+süresinde, sadece MI lokalizasyon etiketleri bulunan örnekler kullanılır, bu da modelin
+sınıflandırma kapasitesini bu spesifik görevde odaklandırır. Checkpoint:
+checkpoints/ecgcnn_localization.pt
+
+Şekil 4. İnferans orkestrasyonu ve tutarlılık kapısı (Consistency Gate): Superclass CNN ve Binary
+Guard çıktıları üzerinden karar/triage akışı ve lokalizasyon modeline geçiş.
+
+3.3 HİBRİT MİMARİ: CNN + XGBOOST ENSEMBLE
+3.3.1 HİBRİT PİPELİNE MANTIĞI
+CNN backbone'ı tarafından üretilen 64 boyutlu embedding vektörü, hibrit
+pipeline'ın başlangıcı olarak hizmet etmektedir. Bu embedding vektörü, StandardScaler
+kullanarak normalize edilir ve ardından dört ayrı XGBoost sınıflandırıcısına gönderilir
+(her superclass için bir tane). Her XGBoost modeli, ilgili sınıfın olasılığını tahmin eder.
+XGBoost çıktıları daha sonra Isotonic Calibration aracılığıyla kalibre edilir, böylece
+tahmin olasılıklarının gerçek olasılık değerlerine daha yakın hale gelmesi sağlanır. Son
+adımda, ensemble kombinasyonu şu şekilde hesaplanır: P_final = α × P_cnn + (1-α) ×
+P_xgb, burada α kombinasyon ağırlığıdır.
+Şekil 5. Hibrit çıkarım hattı ve özellik şeması kilidi (Schema Lock): CNN embedding →
+ölçekleme → XGBoost bankası → ensemble birleşimi.
+
+3.3.2 XGBOOST HİPERPARAMETRELERİ
+XGBoost modelleri, şu hiperparametre değerleri ile eğitilmektedir: n_estimators
+(ağaç sayısı) 100 olarak ayarlanmış, her ağacın maksimum derinliği (max_depth) 5 ile
+sınırlandırılmıştır. Öğrenme oranı (learning_rate) 0.1 olup, her iterasyonda
+ağırlıklandırma katsayısı adım adım güncellenmektedir. Objective fonksiyonu olarak
+binary:logistic seçilmiş ve sınıf dengesizliğini ele almak için scale_pos_weight
+parametresi otomatik olarak hesaplanmıştır.
+3.3.3 FEATURE SCHEMA LOCK (GÜVENLİK)
+XGBoost modelleri, giriş özniteliklerinin boyut ve sırasına duyarlı olup, bu
+parametreler değişirse sessizce hata yapabilir. Bunu önlemek amacıyla,
+feature_schema.json dosyası adında bir güvenlik mekanizması uygulanmıştır. Bu dosya,
+beklenen öznitelik sayısını (64), öznitelik isimlerini (cnn_feat_0, cnn_feat_1, ...,
+cnn_feat_63) ve schema'nın hash değerini içermektedir. Runtime'da, CNN
+embedding'inin boyutu ve adı kontrol edilir, uyumsuzluk durumunda sistem fail-closed
+modu etkinleştirilmektedir.
+3.4 İNFERANS ORKESTRASYONU
+Şekil 6. Açıklanabilirlik (XAI) üretim iş akışı: Grad-CAM ve SHAP çıktılarının artefact deposuna
+kaydı ve AIResult ile ilişkilendirilmesi.
+
+3.4.1 ÜÇ AŞAMALI KARAR AKIŞI
+İnferans süreci, üç ardışık aşamada organize edilmiştir: İlk aşama Superclass ve
+Binary MI tahminlerini paralel olarak çalıştırır, ikinci aşama Consistency Guard
+mekanizması ile karar uyumunu kontrol eder, üçüncü aşama ise MI lokalizasyon
+modelini koşullu olarak tetikler.
+Aşama 1: Superclass + Binary MI Tahmini
+EKG sinyali, Superclass CNN ve Binary MI CNN'e eş zamanlı olarak gönderilir.
+Superclass modeli P_MI_super, P_STTC, P_CD, P_HYP olmak üzere dört çıktı
+sağlarken, Binary MI modeli P_MI_binary çıktısını üretir. Bu aşamada iki modelin
+çıktıları bağımsız olarak hesaplanmakta, henüz birleştirilmemektedir.
+Aşama 2: Consistency Guard
+Consistency Guard, iki modelin karar uyumunu kontrol etmektedir. AGREE_MI
+durumunda (her iki model de MI pozitif), triage seviyesi HIGH olarak ayarlanır ve
+sonuç doğrudan döndürülür. AGREE_NO_MI durumunda (her iki model de MI
+negatif), triage seviyesi LOW olarak ayarlanır. DISAGREE durumlarında (modellerden
+biri MI pozitif, diğeri negatif), triage seviyesi REVIEW olarak işaretlenir ve kaydın
+gözden geçirilmesi gerektiğine dair uyarı oluşturulur.
+Aşama 3: MI Lokalizasyon Gate
+MI Lokalizasyon Gate, lokalizasyon modelinin çalıştırılıp çalıştırılmayacağını
+karar verir. Strict mod'da, sadece AGREE_MI durumlarında lokalizasyon modeli
+tetiklenir. Recall-first mod'da ise, Superclass modelinin MI pozitif tahmin etmesi
+yeterlidir, bu da daha geniş kapsama izin verir (binary model uyarısı ile birlikte
+loglanır).
+3.5 ÜRETİM GÜVENİLİRLİĞİ MEKANİZMALARI
+Şekil 7. İstek yaşam döngüsü ve fail-fast kontrol sıralaması: Doğrulama, giriş ayrıştırma, schema
+lock ve fingerprint kontrolleri ile hata yönetimi.
+
+3.5.1 FAİL-FAST CHECKPOİNT VALİDATİON
+API servisi başlatılırken, tüm checkpoint dosyaları kapsamlı bir şekilde kontrol
+edilmektedir. Her checkpoint'in çıktı boyutu (output_dim) doğrulanır: Superclass için 4,
+Binary MI için 1, Lokalizasyon için 5 olması gerekir. State-dict anahtar yöntemi kontrol
+edilir (Sequential vs Module mimarisi farklılıkları normalize edilir). Ayrıca,
+checkpoint'te saklanan eğitim parametreleri (learning rate, batch size vb.) kontrol edilir.
+Herhangi bir uyumsuzluk durumunda, API servisi başlatılmaz (fail-closed strateji).
+3.5.2 MAPPİNG FİNGERPRİNT DOĞRULAMASI
+MI lokalizasyon etiket mapping'i, projenin yaşam döngüsü boyunca değişebilir
+(örneğin, PMI dahil edilmesi, kod yeniden sınıflandırması vb.). Böyle bir değişiklik,
+üretim ortamındaki tahminlerin doğruluğunu olumsuz yönde etkileyebilir. Bu riski
+yönetmek için, mapping'in SHA256 hash'i kaydedilir. Runtime'da, mapping fingerprint'i
+beklenen değer ile karşılaştırılır, uyumsuzluk durumunda MappingDriftError oluşturulur
+ve sistem uyarı verilerek gözden geçirme yapılması istenir.
+3.5.3 Feature Schema Lock
+Feature schema lock mekanizması, XGBoost modellerinin giriş öznitelik
+boyutunun (embedding boyutu = 64) veya sırasının değişmesini engellemektedir. Eğer
+CNN embedding boyutu bir neden ile değişirse (örneğin, farklı bir model versiyonu
+yüklenmesi), XGBoost modeli sessizce hata yapacak ve yanlış tahminler verebilecektir.
+Bu durumu önlemek amacıyla, beklenen öznitelik sayısı, adları ve hash değeri
+feature_schema.json dosyasında saklanmakta ve her çıkarım sırasında
+doğrulanmaktadır.
+3.6 API SÖZLEŞMESİ: AIRESULT V1.0
+3.6.1 ENDPOİNT TASARIMI
+CardioGuard-AI API, dört ana endpoint sunmaktadır: GET /health servisi, API
+sunucusunun çalışıp çalışmadığını kontrol eder. GET /ready endpoint'i, tüm modellerin
+yüklü olup olup olmadığını doğrular ve sistem başlatma tamamlandıktan sonra bu
+endpoint true döner. POST /predict/superclass, Superclass tahminleri sağlar. POST
+/predict/mi-localization, MI lokalizasyon tahminlerini döner (Consistency Guard
+tarafından gated).
+Şekil 8. Çok katmanlı sistem mimarisi: İstemci–API Gateway–FastAPI model servisi ve AIResult
+v1.0 çıktı sözleşmesi.
+
+3.6.2 Response Contract
+Tüm tahmin yanıtları AIResult v1.0 sözleşmesine uygun olarak döndürülmektedir.
+Yanıt yapısı, identity bilgileri (case_id, request_id, timestamp), predictions (çok-etiketli
+patolojiler ve türetilmiş NORM), localization (MI alt türleri ve mapping_fingerprint),
+triage seviyesi (HIGH/REVIEW/LOW) ve kural açıklaması, tahmin kaynakları
+(CNN/XGB/Ensemble ayrımı), XAI artifactları (Grad-CAM, SHAP görselleri) ve
+sürüm bilgileri (checkpoint version, contract version) içermektedir. Bu yapı, klinik karar
+destek ve audit trail (denetim izi) oluşturmayı mümkün kılmaktadır.
+
+3.6.3 DEĞERLENDİRME METRİKLERİ (PLANLANAN)
+Model performansının değerlendirilmesinde, çoklu-etiketli sınıflandırma
+görevlerine uygun metrikler kullanılacaktır: Precision, Recall ve F1-score, hem etiket
+bazında hem de macro-average olarak hesaplanacaktır. ROC eğrisi altındaki alan
+(AUROC), sınıf ayrımcılığı yeteneğini ölçmektedir. Confusion matrix, özellikle MI
+sınıflandırması için ayrıntılı analiz sağlayacaktır. Consistency rate, Binary ve Superclass
+modellerinin karar uyum oranını gösterecektir. XAI sanity checks, randomization
+testleri aracılığıyla açıklanabilirlik çıktılarının gerçekçiliğini doğrulayacaktır.
+
+4 SONUÇLAR
+Gereksinim Listesi
+Bu bölümde CardioGuard-AI karar destek sistemi için tanımlanan işlevsel, teknik
+ve güvenlik gereksinimleri özetlenmektedir. Gereksinimler, sistemin EKG tabanlı MI
+tespiti, lokalizasyonu, açıklanabilirlik ve üretim ortamı güvenilirliği hedeflerini
+karşılayacak şekilde yapılandırılmıştır.
+Foksiyonel gereksinimler
+A : Veri Yükleme ve İşleme Gereksinimleri
+Sistemin PTB-XL veri setinden EKG sinyallerini yüklemesi, işlemesi ve
+normalize etmesi için gerekli fonksiyonları tanımlar. Bu gereksinimler, 12 derivasyonlu
+EKG sinyallerinin WFDB formatında okunması, 1000 örnek × 12 kanal boyutunda
+işlenmesi ve MinMax normalizasyonu ile 0-1 aralığına ölçeklenmesini kapsar.
+Tablo 2 Veri Yükleme ve İşlem Gereksinimleri
+ID Gereksinim Açıklama Öncelik Durum
+FR-
+01
+
+PTB-XL Veri
+Yükleme
+Sistem, PTB-XL veri setinden EKG
+sinyallerini yükleyebilmelidir. WFDB
+formatı desteklenmelidir.
+Yüksek Tamamlandı
+FR-
+02
+12 Derivasyon
+Sinyal İşleme
+Sistem, 12 derivasyonlu EKG
+sinyallerini işleyebilmelidir. Sinyal
+boyutu: 1000 örnek × 12 kanal,
+örnekleme frekansı: 100 Hz.
+Yüksek Tamamlandı
+FR-
+03
+Sinyal
+Normalizasyonu
+Sistem, MinMax normalizasyonu ile her
+derivasyon için 0-1 aralığında ölçekleme
+yapabilmelidir.
+Yüksek Tamamlandı
+B : Sınıflandırma ve Tahmin Gereksinimleri
+Sistemin patoloji tespiti, mı lokalizasyonu, model tutarlılık kontrolü ve triaj seviyesi
+belirleme yeteneklerini tanımlar. Bu gereksinimler, dört patoloji sınıfının çoklu etiket
+olarak tespitini, mı durumunda beş anatomik bölgenin lokalize edilmesini, binary ve
+superclass modelleri arasında tutarlılık kontrolü yapılmasını ve sonuçlara göre uygun
+triaj seviyesinin atanmasını sağlar.
+Tablo 3 Sınıflandırma ve Tahmin Gereksinimleri
+ID Gereksinim Açıklama Öncelik Durum
+FR-
+04
+Patoloji
+Sınıflandırması
+Sistem, dört patoloji sınıfını (MI, STTC,
+CD, HYP) çoklu etiket olarak tespit
+edebilmelidir. Her sınıf için olasılık skoru
+ve karar çıktısı üretilmelidir.
+Yüksek Tamamlandı
+FR-
+05
+MI
+Lokalizasyonu
+Sistem, MI tespit edildiğinde beş anatomik
+bölgeyi (AMI, ASMI, ALMI, IMI, LMI)
+lokalize edebilmelidir. Çoklu bölge tespiti
+desteklenmelidir.
+Yüksek Tamamlandı
+FR-
+06
+Tutarlılık
+Kontrolü
+Sistem, Binary MI ve Superclass MI
+modelleri arasında tutarlılık kontrolü
+yapabilmelidir. Uyumsuzluk durumunda
+inceleme triajı atanmalıdır.
+Yüksek Tamamlandı
+FR-
+10 Triaj Seviyeleri
+
+Sistem, tahmin sonuçlarına göre triaj
+seviyesi (Yüksek, Orta, Düşük, İnceleme)
+belirleyebilmelidir.
+Yüksek Tamamlandı
+C : Hibrit Model Pipeline Gereksinimleri
+Sistemin CNN ve XGBoost modellerini birleştirerek hibrit tahmin pipeline'ı
+oluşturmasını tanımlar. Bu gereksinimler, NORM skorunun diğer patoloji
+olasılıklarından türetilmesini ve CNN ile XGBoost çıktılarının ağırlıklı ortalama ile
+ensemble edilmesini kapsar.
+Tablo 4 Hibrit Model Pipline Gereksinimleri
+ID Gereksinim Açıklama Öncelik Durum
+FR-
+11 NORM Türetme
+
+Sistem, NORM skorunu "1 - max(P_MI,
+P_STTC, P_CD, P_HYP)" formülü ile
+türetebilmelidir. NORM bir sınıflandırıcı
+çıktısı değildir, diğer olasılıklardan
+türetilir.
+Orta Tamamlandı
+FR-
+12
+Ensemble
+Kombinasyonu
+Sistem, CNN ve XGBoost olasılıklarını
+ağırlıklı ortalama ile birleştirebilmelidir.
+Varsayılan ağırlık değeri: α = 0.15.
+Orta Tamamlandı
+D : Açıklanabilirlik (XAI) Gereksinimleri
+Sistemin tahmin sonuçlarını açıklanabilir kılmak için görselleştirme ve önem
+skoru üretme yeteneklerini tanımlar. Bu gereksinimler, CNN modelleri için Grad-CAM
+ile zamansal açıklama haritalarının ve XGBoost modelleri için SHAP ile özellik önem
+skorlarının üretilmesini sağlar.
+Tablo 5 Açıklanabilirlik (XAI) Gereksinimleri
+ID Gereksinim Açıklama Öncelik Durum
+FR-
+07
+Grad-CAM
+Açıklamaları
+Sistem, CNN modeli için Grad-CAM ile
+zamansal açıklama haritaları
+üretebilmelidir. SmoothGrad-CAM desteği
+sağlanmalıdır.
+Orta Tamamlandı
+FR-
+08
+SHAP
+Açıklamaları
+Sistem, XGBoost modelleri için SHAP
+TreeExplainer ile özellik önem skorları
+üretebilmelidir.
+Orta Tamamlandı
+E : API Servisi Gereksinimleri
+Sistemin FastAPI framework üzerinden REST API servisi sunma yeteneğini
+tanımlar. Bu gereksinim, superclass tahmin, MI lokalizasyonu ve sistem sağlık kontrolü
+endpoint'lerinin sağlanmasını kapsar.
+Tablo 6 API Servisi Gereksinimleri
+ID Gereksinim Açıklama Öncelik Durum
+FR-
+09 REST API
+Sistem, FastAPI framework üzerinden tahmin
+servisi sunabilmelidir. Desteklenen uç
+noktalar: /predict/superclass, /predict/mi-
+localization, /health
+Yüksek Tamamlandı
+Fonksiyonel Olmayan Gereksinimler
+A : güvenilirlik ve güvenlik gereksinimleri
+Sistemin üretim ortamında güvenilir çalışması ve veri bütünlüğü sağlaması için gerekli
+kontrolleri tanımlar. Bu gereksinimler, hatalı model checkpoint'leri ile sistemin başlamamasını
+sağlayan fail-fast mekanizmasını, apı çıktılarının aıresult v1.0 kontratına tam uyumunu ve mı
+lokalizasyon eşleme parmak izi kontrolünü kapsar.
+Tablo 7 Güvenilirlik ve Güvenlik Gereksinimleri
+ID Gereksinim Açıklama Öncelik Metrik
+NFR-
+01
+Hızlı
+Başarısızlık
+(Fail-Fast)
+Kontrol noktası doğrulaması
+başlangıçta yapılmalı, hatalı
+kontrol noktası varsa sistem
+başlamamalıdır.
+Yüksek Başlangıç süresi < 5 saniye
+NFR-
+05 Kontrat Uyumu
+
+Tüm API çıktıları AIResult v1.0
+kontratına uygun olmalıdır. Yüksek %100 uyum
+NFR-
+06
+
+Eşleme Parmak
+İzi
+MI lokalizasyon eşleme parmak
+izi değişikliğinde sistem uyarı
+vermeli ve başlamamalıdır.
+Yüksek Parmak izi: 8ab274e06afa1be8
+38
+B : Performans Gereksinimleri
+Sistemin performans hedeflerini ve kaynak kullanım sınırlarını tanımlar. Bu
+gereksinimler, apı yanıt süresinin 500 milisaniye altında tutulmasını, toplam model
+boyutunun optimize edilmesini ve sistemin gpu olmadan sadece cpu üzerinde
+çalışabilmesini sağlar.
+Tablo 8 Performans Gereksinimleri
+ID Gereksinim Açıklama Öncelik Metrik
+NFR-
+02
+
+API Yanıt
+Süresi
+Tek tahmin için API yanıt süresi kabul
+edilebilir olmalıdır. Orta
+< 500 ms
+(CPU)
+NFR-
+03 Model Boyutu
+
+Toplam kontrol noktası boyutu
+optimize edilmelidir. Düşük < 2 MB
+NFR-
+04 CPU Desteği
+
+Sistem, GPU olmadan sadece CPU
+üzerinde çalışabilmelidir. Yüksek
+PyTorch CPU
+backend
+C : GEREKSİNİM BAĞIMLILIKLARI
+Şekil 9 Gereksinim Bağımlılıkları
+Use case diyagramları
+CardioGuard-AI sistemi, EKG tabanlı patoloji tespiti için 3 ana aktör ve 9
+kullanım senaryosu ile tasarlanmıştır. Sistem, klinisyenlerin EKG sinyallerini
+yüklemesinden başlayarak, patoloji tespiti, MI lokalizasyonu, triaj belirleme ve
+açıklanabilir yapay zeka (XAI) raporları sunmaya kadar kapsamlı bir iş akışı
+sağlamaktadır.
+Geliştirme Kullanım Senaryoları:
+ Model Eğitimi: ML Mühendisi tarafından yürütülen model geliştirme. Yeni modeller
+eğitilir, hiperparametreler optimize edilir ve checkpoint'ler oluşturulur.
+Operasyon Kullanım Senaryoları:
+
+ Checkpoint Yönetimi: ML Mühendisi ve Sistem Yöneticisi tarafından yürütülen model
+versiyonlama. Model ağırlıkları doğrulanır, güncellenir ve geriye alınır.
+
+ Sağlık Kontrolü: Sistem Yöneticisi tarafından yürütülen sistem izleme. GET /health ve
+GET /ready endpoint'leri kullanılarak sistem durumu kontrol edilir.
+9 Ana Kullanım Senaryosu:
+ Sistemin kullanım senaryoları üç kategoride organize edilmiştir:
+Klinik Kullanım Senaryoları:
+
+ EKG Sinyali Yükleme: Klinisyen tarafından tetiklenen temel girdi işlemi. EKG
+dosyasının formatı, boyutu ve değerleri kontrol edilerek sisteme yüklenir.
+
+ Patoloji Tespiti: Sistem tarafından otomatik olarak tetiklenen çok sınıflı sınıflandırma. MI,
+STTC, CD ve HYP olmak üzere dört patoloji sınıfı için olasılık skorları hesaplanır.
+
+ MI Lokalizasyonu: Sistem tarafından koşullu olarak tetiklenen anatomik lokalizasyon. MI
+tespit edilmişse, beş bölge (AMI, ASMI, ALMI, IMI, LMI) için tahminler üretilir.
+
+ Sonuç Raporlama: Klinisyen tarafından istenen rapor üretimi. Tüm tahminler AIResult
+v1.0 formatında JSON olarak döndürülür.
+
+ XAI Görüntüleme: Klinisyen tarafından istenen açıklanabilirlik görüntüleri. Grad-CAM
+ısı haritaları ve SHAP önem skorları sunulur.
+
+ Triaj Belirleme: Sistem tarafından otomatik olarak tetiklenen öncelik belirlemesi. Tahmin
+sonuçlarına göre HIGH, MEDIUM, LOW veya REVIEW seviyeleri atanır.
+
+Geliştirme Kullanım Senaryoları:
+ Model Eğitimi: ML Mühendisi tarafından yürütülen model geliştirme. Yeni modeller
+eğitilir, hiperparametreler optimize edilir ve checkpoint'ler oluşturulur.
+Operasyon Kullanım Senaryoları:
+
+ Checkpoint Yönetimi: ML Mühendisi ve Sistem Yöneticisi tarafından yürütülen model
+versiyonlama. Model ağırlıkları doğrulanır, güncellenir ve geriye alınır.
+
+ Sağlık Kontrolü: Sistem Yöneticisi tarafından yürütülen sistem izleme. GET /health ve
+GET /ready endpoint'leri kullanılarak sistem durumu kontrol edilir.
+Aktör Kullanım Senaryoları:
+CardioGuard-AI sisteminin üç ana aktörü ve özellikleri aşağıda detaylı olarak
+açıklanmıştır:
+Klinisyen (Birincil Aktör): Hastane ortamında çalışan doktor veya kardiyolog.
+EKG sinyallerini sisteme yükler, tahmin sonuçlarını yorumlar ve hasta bakım kararları
+alır. Sistem arayüzü web tabanlıdır ve REST API üzerinden tahmin istekleri gönderir.
+EKG Sinyali Yükleme, Sonuç Raporlama ve XAI Görüntüleme senaryolarında aktif rol
+alır.
+ML Mühendisi (Birincil Aktör): Makine öğrenimi uzmanı olarak görev yapar.
+PyTorch ve XGBoost modellerini eğitir, hiperparametreleri optimize eder, model
+performansını değerlendirir. Python training scriptleri ve Jupyter notebook'lar kullanır.
+Model Eğitimi ve Checkpoint Yönetimi senaryolarında sorumludur.
+Sistem Yöneticisi (Birincil Aktör): BT operasyon personeli olarak görev yapar.
+FastAPI sunucusu, model yükleme durumu, database bağlantıları ve sistem sağlığını
+izler. Monitoring tool'ları (Prometheus, Grafana) kullanır. Checkpoint Yönetimi ve
+Sağlık Kontrolü senaryolarında görev alır.
+
+Şekil 10. Kullanım Senaryoları Diyagramı
+
+Class Diyagramı
+Bu bölümde CardioGuard-AI karar destek sisteminin yazılım mimarisi ve sınıf
+yapısı detaylı olarak açıklanmaktadır. Sistem, modüler bir yapıda yedi ana paketten
+oluşmaktadır ve SOLID tasarım prensipleri doğrultusunda geliştirilmiştir.
+
+GENEL BAKIŞ
+CardioGuard-AI sistemi, her biri belirli bir sorumluluğa sahip yedi ana paketten
+oluşan katmanlı bir mimari ile tasarlanmıştır. Bu paketler arasında net bağımlılık
+ilişkileri tanımlanmış ve gevşek bağlılık (loose coupling) prensibi uygulanmıştır.
+
+Model Paketi (src.models): Yapay zeka modellerinin tanımlandığı pakettir. ECG
+sinyallerini işleyen evrişimsel sinir ağları (CNN) ve bunların farklı varyantları burada
+yer alır. Superclass, Binary MI ve Lokalizasyon modelleri için gerekli sınıf yapıları
+içerir.
+
+Veri Paketi (src.data): Veri yükleme, işleme ve etiketleme işlemlerinden
+sorumludur. PTB-XL veri setinin yüklenmesi, EKG sinyallerinin normalizasyonu ve
+patoloji etiketlerinin üretilmesi bu pakette gerçekleştirilir.
+
+Pipeline Paketi (src.pipeline): Tahmin ve eğitim iş akışlarını yöneten pakettir.
+Çıkarım (inference) pipeline'ı, tutarlılık kontrol mekanizması (Consistency Guard) ve
+model eğitim sınıfları burada bulunur.
+
+XAI Paketi (src.xai): Açıklanabilir yapay zeka bileşenlerini içerir. Grad-CAM ısı
+haritaları, SHAP önem skorları ve XAI sanity check mekanizmaları bu pakette
+tanımlanmıştır.
+
+Kontrat Paketi (src.contracts): API response şemalarını ve veri dönüşüm
+mekanizmalarını içerir. AIResult v1.0 formatına uygun veri yapılarının oluşturulması
+burada gerçekleşir.
+Backend Paketi (src.backend): FastAPI web servisi ve REST API endpoint'lerinin
+tanımlandığı pakettir. HTTP isteklerinin işlenmesi, response formatlarının oluşturulması
+ve uygulama durumu yönetimi burada yapılır.
+
+Yardımcı Paket (src.utils): Checkpoint doğrulama, güvenli model yükleme ve
+performans metriklerinin hesaplanması gibi yardımcı işlevler içerir.
+
+Paketler Arası İlişkiler:
+Backend Paketi, sistem giriş noktası olarak Model, Pipeline ve Kontrat paketlerini
+kullanır. Pipeline Paketi, Model ve Veri paketlerine bağımlıdır ve tahmin iş akışını yönetir.
+XAI Paketi, Model paketini kullanarak açıklama üretir. Kontrat Paketi, Veri paketinden
+faydalanarak response yapılarını oluşturur. Tüm paketler gerektiğinde Yardımcı Paketten
+destek alır.
+
+Şekil 11. Paket Bağımlılıkları
+Model Paketi
+
+Model paketi, yapay zeka modellerinin temel yapı taşlarını içerir. PyTorch
+nn.Module sınıfından türetilen model bileşenleri modüler ve yeniden kullanılabilir
+şekilde tasarlanmıştır.
+
+Yapılandırma Sınıfı
+ECGCNNConfig: Model yapılandırma parametrelerini tutan veri sınıfıdır. Giriş
+kanal sayısı (varsayılan 12, 12-derivasyonlu EKG için), filtre sayısı (varsayılan 64),
+kernel boyutu (varsayılan 7), dropout oranı (varsayılan 0.3) ve lokalizasyon çıktı boyutu
+(varsayılan 2) parametrelerini içerir. Bu sınıf, model başlatma sırasında kullanılır ve
+hiperparametr yönetimini kolaylaştırır.
+
+Omurga Sınıfı
+ECGBackbone: Tüm model varyantlarının paylaştığı evrişimsel sinir ağı
+omurgasıdır. Giriş olarak 12 × 1000 boyutunda EKG sinyali alır ve 256 boyutlu gömme
+(embedding) vektörü üretir. ECGCNNConfig nesnesini kullanarak başlatılır. forward
+metodu ile ileri geçiş (forward pass) gerçekleştirilir. Evrişimsel katmanlar, aktivasyon
+fonksiyonları ve dropout katmanlarından oluşan Sequential yapı içerir.
+
+Kafa Sınıfları
+BinaryHead: İkili sınıflandırma için tasarlanmış kafa sınıfıdır. 256 boyutlu
+gömme vektörünü alır ve tek çıktılı doğrusal katman uygular. Binary MI modelinde
+kullanılır ve MI/Normal ayrımı yapar. Sigmoid aktivasyonu ile 0-1 aralığında olasılık
+skoru üretir.
+
+MultiClassHead: Çoklu sınıf sınıflandırma için genel amaçlı kafa sınıfıdır. Giriş
+özellik boyutu ve sınıf sayısı parametreleriyle başlatılır. n çıktılı doğrusal katman içerir.
+Sigmoid aktivasyonu ile her sınıf için bağımsız olasılık skoru hesaplar.
+
+FiveClassHead: Beş sınıflı MI lokalizasyon tespiti için özelleştirilmiş kafa
+sınıfıdır. MultiClassHead sınıfından türetilir ve sınıf sayısı parametresi 5 olarak
+sabitlenmiştir. AMI, ASMI, ALMI, IMI ve LMI bölgeleri için tahmin üretir.
+
+LocalizationHead: Regresyon çıktısı için tasarlanmış kafa sınıfıdır. Giriş özellik
+boyutu ve çıktı boyutu parametreleriyle başlatılır. Doğrusal katman içerir ve aktivasyon
+fonksiyonu kullanmaz. Lokalizasyon koordinatları veya sürekli değerler üretmek için
+kullanılabilir.
+
+Tam Model Sınıfları
+ECGCNN: Tek görev EKG sınıflandırma modelidir. ECGBackbone ve bir kafa
+sınıfı (BinaryHead veya MultiClassHead) içerir. ECGCNNConfig ve sınıf sayısı
+parametreleriyle başlatılır. forward metodu ile girdi sinyali önce omurgadan geçirilir,
+ardından kafa sınıfı uygulanır. Binary MI ve Superclass modelleri için bu sınıf
+kullanılır.
+
+MultiTaskECGCNN: Çoklu görev modeli olup hem sınıflandırma hem
+lokalizasyon yapar. ECGBackbone, bir ana kafa sınıfı ve LocalizationHead içerir.
+forward metodu ile sınıflandırma ve lokalizasyon çıktıları aynı anda üretilir. Dictionary
+formatında sonuç döner: classification ve localization anahtarları ile.
+
+Model Varyantları:
+Binary MI Modeli: Bir çıktı üretir. BinaryHead kullanır. MI ve Normal
+sınıflarını ayırt eder. Consistency Guard mekanizmasında kullanılır.
+
+Superclass Modeli: Dört çıktı üretir. MultiClassHead kullanır. MI, STTC, CD ve
+HYP patolojilerini tespit eder. Çoklu etiket sınıflandırma yapar.
+
+Lokalizasyon Modeli: Beş çıktı üretir. FiveClassHead kullanır. AMI, ASMI, ALMI,
+IMI ve LMI bölgelerini lokalize eder. MI tespit edildiğinde koşullu olarak çalışır.
+
+Şekil 12. Model Paketi Class Diyyagramı
+
+Veri Paketi
+Veri paketi, EKG sinyallerinin yüklenmesi, işlenmesi ve etiketlenmesi süreçlerini
+yönetir. PyTorch Dataset arayüzüne uygun sınıflar içerir.
+
+Dataset Sınıfları
+SignalDataset: Genel amaçlı EKG sinyal dataset sınıfıdır. Pandas DataFrame,
+dosya yolu, dosya adı sütunu, etiket sütunu ve transform fonksiyonu parametreleriyle
+başlatılır. Önbellekleme (caching) desteği içerir. len metodu ile dataset boyutu
+döner. getitem metodu ile indeks numarasına göre sinyal ve etiket tuple'ı döner.
+iter metodu ile dataset üzerinde iterasyon yapılabilir.
+
+CachedSignalDataset: Bellekte önbelleğe alınmış dataset sınıfıdır. NumPy array
+formatında sinyal ve etiketler içerir. SignalDataset'e göre daha hızlıdır çünkü diskten
+okuma yapmaz. Transform fonksiyonu ile anlık dönüşümler desteklenir. Eğitim
+sırasında hız açısından avantaj sağlar.
+
+Yapılandırma Sınıfı
+PTBXLConfig: PTB-XL veri seti konfigürasyon parametrelerini içerir. Veri dizini
+(data_dir), metadata dosya adı, SCP statements dosya adı, örnekleme frekansı
+(varsayılan 100 Hz), sinyal uzunluğu (varsayılan 1000 örnek) ve derivasyon sayısı
+(varsayılan 12) parametreleri tanımlanır.
+
+İşleme Sınıfları
+LabelProcessor: Patoloji etiketlerinin üretilmesinden sorumludur.
+add_binary_mi_labels metodu ile DataFrame'e MI/Normal etiketleri eklenir.
+add_superclass_labels metodu ile dört sınıf etiketi eklenir. add_5class_labels metodu ile
+beş bölge etiketi eklenir. extract_codes_above_threshold metodu ile belirli bir eşiğin
+üzerindeki SCP kodlarını çıkarır. Minimum olasılık parametresi ile güvenlik eşiği
+uygulanır.
+
+MILocalizationProcessor: LabelProcessor'ı genişleten özel sınıftır. MI
+lokalizasyon etiketlerinin üretilmesinden sorumludur.
+MI_LOCALIZATION_REGIONS listesi ile beş bölge tanımlanır (AMI, ASMI, ALMI,
+IMI, LMI). MI_CODE_TO_REGIONS dictionary ile SCP kodlarının bölgelere
+eşlenmesi yapılır. EXCLUDED_MI_CODES listesi ile hariç tutulacak kodlar belirtilir.
+extract_mi_regions metodu ile SCP kodlarından bölgeler çıkarılır.
+get_mi_localization_mask metodu ile MI tespiti yapılan kayıtlar için mask oluşturur.
+
+SignalLoader: EKG sinyallerinin yüklenmesinden sorumludur.
+load_single_signal metodu ile tek sinyal yüklenir. load_signals_batch metodu ile toplu
+sinyal yükleme yapılır. build_npz_cache metodu ile NPZ formatında önbellek oluşturur.
+load_npz_cache metodu ile önbellekten sinyal ve etiketler yüklenir. WFDB formatı
+desteklenir.
+
+Normalizer: Sinyal normalizasyon işlemlerini içerir. min_max_normalize metodu
+ile 0-1 aralığına ölçekleme yapar. z_score_normalize metodu ile standartlaştırma
+uygular. per_lead_normalize metodu ile derivasyon bazında normalizasyon yapar.
+
+Veri Akışı:
+Ham PTB-XL veritabanından (21,837 kayıt) SignalLoader ile sinyaller yüklenir.
+Metadata DataFrame oluşturulur. LabelProcessor ile patoloji etiketleri üretilir.
+MILocalizationProcessor ile MI lokalizasyon etiketleri eklenir. Normalizer ile
+sinyaller normalize edilir. SignalDataset veya CachedSignalDataset oluşturulur.
+PyTorch DataLoader ile model eğitimi için batch'ler üretilir.
+Şekil 13. Veri Paketi Class Diyagramı
+Pipeline paketi
+Pipeline paketi, tahmin ve eğitim iş akışlarını yöneten sınıfları içerir. Consistency
+Guard mekanizması ve model eğitim sınıfları burada tanımlanmıştır.
+
+Uyum Kontrol Sınıfları
+AgreementType: Enum sınıfıdır ve dört uyum tipi tanımlar. AGREE_MI: Her iki
+model de MI tespit etmiştir. AGREE_NO_MI: Her iki model de MI tespit etmemiştir.
+DISAGREE_TYPE_1: Superclass MI tespit etmiş, Binary MI tespit etmemiştir.
+DISAGREE_TYPE_2: Binary MI tespit etmiş, Superclass MI tespit etmemiştir.
+
+ConsistencyResult: Tutarlılık kontrol sonucunu tutan veri sınıfıdır. Superclass
+MI olasılığı, Binary MI olasılığı, Superclass MI kararı (boolean), Binary MI kararı
+(boolean), AgreementType değeri, triaj seviyesi (HIGH/MEDIUM/LOW/REVIEW),
+uyarı listesi içerir. to_dict metodu ile dictionary formatına dönüştürülür.
+
+ConsistencyGuard: Model uyum kontrol mekanizmasıdır. check_consistency
+metodu ile iki model çıktısı karşılaştırılır. Eşik değerleri parametresi ile karar sınırları
+belirlenir. ConsistencyResult nesnesi döndürülür. should_run_localization metodu ile
+lokalizasyon yapılıp yapılmayacağına karar verilir. Gate mode parametresi ile
+lokalizasyon tetikleme stratejisi belirlenir. derive_norm_from_superclass metodu ile
+NORM skorunun türetilmesi yapılır.
+
+Uyum Tipi Açıklamaları:
+AGREE_MI durumunda: Superclass MI pozitif, Binary MI pozitif. Triaj
+seviyesi Yüksek atanır. Her iki model de MI tespit etmiştir, güvenilir sonuç.
+
+AGREE_NO_MI durumunda: Superclass MI negatif, Binary MI negatif. Triaj
+seviyesi Düşük atanır. Her iki model de MI tespit etmemiştir, güvenilir sonuç.
+
+DISAGREE_TYPE_1 durumunda: Superclass MI pozitif, Binary MI negatif.
+Triaj seviyesi İnceleme atanır. Düşük güvenilirlikli MI tespiti, manuel inceleme gerekli.
+
+DISAGREE_TYPE_2 durumunda: Superclass MI negatif, Binary MI pozitif.
+Triaj seviyesi İnceleme atanır. Superclass modeli MI'yı kaçırmış olabilir, manuel
+inceleme gerekli.
+
+Şekil 14. Pipeline Paketi Class Diyagramı
+XAI Paketi
+XAI paketi, açıklanabilir yapay zeka bileşenlerini içerir. Grad-CAM, SHAP ve
+sanity check mekanizmaları bu pakette tanımlanmıştır.
+
+Açıklama Üretici Sınıfları
+GradCAM: Gradient-weighted Class Activation Mapping uygulayan sınıftır.
+Model ve hedef katman parametreleriyle başlatılır. generate metodu ile girdi ve sınıf
+indeksi parametreleriyle ısı haritası üretir. Gradyan ve aktivasyon değerleri Hook
+mekanizması ile yakalanır. NumPy array formatında ısı haritası döndürür. 12 derivasyon
+için zamansal ısı haritası üretir.
+
+SHAPExplainer: Soyut (abstract) temel sınıftır. explain metodu tanımlanmıştır
+ancak implement edilmemiştir. Farklı SHAP açıklayıcı türleri bu sınıftan türetilir.
+
+SHAPXGBExplainer: SHAPExplainer'dan türetilir. XGBoost modelleri için
+SHAP TreeExplainer kullanır. Model parametresiyle başlatılır. explain_single metodu
+ile tek örnek için önem skorları üretir. explain_batch metodu ile toplu açıklama yapılır.
+get_feature_importance metodu ile genel özellik önem sıralaması döndürür.
+
+SHAPOVRExplainer: SHAPExplainer'dan türetilir. One-vs-Rest XGBoost
+modelleri için açıklama üretir. Model dictionary parametresiyle başlatılır.
+explain_per_class metodu ile her sınıf için ayrı SHAP değerleri hesaplar. Dictionary
+formatında sınıf bazlı açıklamalar döner.
+
+Doğrulama ve Görselleştirme Sınıfları
+SanityChecker: XAI açıklamalarının güvenilirliğini test eder.
+randomize_model_weights metodu ile model ağırlıkları rastgele yapılır.
+compare_explanations metodu ile orijinal ve rastgeleştirilmiş açıklamalar karşılaştırılır.
+run_sanity_check metodu ile tam test süreci çalıştırılır ve boolean sonuç döner. P değeri
+0.001 eşiği kullanılır.
+
+XAIVisualizer: Açıklama görselleştirmelerini üretir. plot_gradcam_overlay
+metodu ile sinyal üzerine ısı haritası bindirimi yapar. plot_shap_summary metodu ile
+SHAP önem grafiği oluşturur. Matplotlib Figure nesneleri döndürür. save_artifacts
+metodu ile görselleri PNG formatında kaydeder.
+
+XAIReporter: Metin tabanlı açıklama raporları üretir. generate_narrative metodu
+ile tahmin ve açıklamalardan klinik açıklama metni oluşturur. create_report metodu ile
+Markdown formatında rapor üretir. Çalıştırma dizini parametresiyle raporun
+kaydedileceği yol belirlenir.
+
+Açıklama Akışı:
+EKG sinyali ve tahminler girdi olarak alınır. GradCAM sınıfı ile zamansal ısı
+haritaları üretilir. SHAP açıklayıcı sınıfları ile önem skorları hesaplanır. SanityChecker
+ile açıklamaların güvenilirliği doğrulanır. XAIVisualizer ile PNG formatında
+görselleştirmeler oluşturulur. XAIReporter ile Markdown formatında metin açıklamaları
+üretilir. Tüm artifactlar AIResult v1.0 response'una eklenir.
+
+Şekil 15. XAI Paketi Class Diyagramı
+Açıklama Yöntemleri
+Tablo 9 Kullanılan XAI Yöntemleri
+Yöntem Model Çıktı Görselleştirme
+Grad-CAM CNN Isı haritası Sinyal üzeri overlay
+SHAP XGBoost Özellik önemi Çubuk grafik
+Backend paketi
+Backend paketi, FastAPI web servisi ve REST API endpoint'lerinin tanımlandığı
+pakettir. HTTP isteklerinin işlenmesi ve response formatlarının oluşturulması burada
+yapılır.
+Uygulama Sınıfları
+FastAPIApp: Ana uygulama sınıfıdır. Title ve version özellikleri içerir. CORS
+middleware ile çapraz kaynak istekleri desteklenir. Uygulama başlatma ve kapatma
+olayları tanımlanmıştır.
+AppState: Global uygulama durumu sınıfıdır. Superclass modeli, Binary modeli,
+Lokalizasyon modeli, XGBoost modelleri dictionary, kalibratörler dictionary,
+StandardScaler, eşik değerleri dictionary ve yüklenme durumu (is_loaded boolean)
+içerir. load_models metodu ile checkpoint yolları, XGBoost dizini ve eşik değerleri yolu
+parametreleriyle tüm modeller yüklenir. Singleton pattern uygulanmıştır.
+Response Sınıfları
+PredictionProbabilities: Patoloji olasılık skorlarını içerir. MI float, STTC float,
+CD float, HYP float, NORM float özellikleri vardır. 0-1 aralığında değerler alır.
+PrimaryPrediction: Birincil tahmin bilgilerini içerir. Label string (tespit edilen
+patoloji), confidence float (güven skoru), rule string (karar kuralı açıklaması) özellikleri
+vardır.
+SourceProbabilities: Tahmin kaynaklarını ayırt eder. CNN dictionary, XGB
+dictionary, Ensemble dictionary içerir. Her dictionary MI, STTC, CD, HYP
+olasılıklarını içerir.
+
+VersionInfo: Versiyon bilgilerini içerir. Model hash string (checkpoint parmak
+izi), threshold hash string (eşik değerleri parmak izi), API version string, timestamp
+string özellikleri vardır.
+
+SuperclassPredictionResponse: Superclass tahmin endpoint'i response'udur.
+Mode string, probabilities (PredictionProbabilities nesnesi), predicted_labels listesi,
+thresholds dictionary, primary (PrimaryPrediction nesnesi), sources (SourceProbabilities
+nesnesi), versions (VersionInfo nesnesi) içerir.
+
+MILocalizationResponse: MI lokalizasyon endpoint'i response'udur. MI detected
+boolean, region probabilities dictionary, detected regions listesi, label space string,
+mapping fingerprint string, localization head type string içerir.
+
+HealthResponse: Health check endpoint'i response'udur. Status string
+(ok/unavailable) ve timestamp string içerir.
+
+ReadyResponse: Readiness check endpoint'i response'udur. Ready boolean,
+models loaded dictionary (her model için boolean), message string içerir.
+
+API Endpoint'leri
+POST /predict/superclass: EKG sinyali alır ve SuperclassPredictionResponse
+döndürür. Çoklu etiket patoloji tahmini yapar. Multipart form data ile dosya yükleme
+desteklenir.
+
+POST /predict/mi-localization: EKG sinyali alır ve MILocalizationResponse
+döndürür. MI anatomik lokalizasyonu yapar. Koşullu olarak çalışır (MI tespit
+edilmişse).
+
+GET /health: HealthResponse döndürür. API sunucusunun canlı olup olmadığını
+kontrol eder. Kubernetes liveness probe için kullanılır.
+
+GET /ready: ReadyResponse döndürür. Tüm modellerin yüklenip
+yüklenmediğini kontrol eder. Kubernetes readiness probe için kullanılır.
+
+Şekil 16. Backend Paketi Class Diyagramı
+Planlanan sınıflar
+CardioGuard-AI sistemi sürümü için dört yeni sınıf planlanmıştır. Bu sınıflar,
+sistemin açıklanabilirlik, güvenilirlik ve otomatik raporlama kapasitesini artırmayı
+hedeflemektedir.
+
+RAG Entegrasyonu
+RAGRetriever: Retrieval-Augmented Generation (RAG) mekanizması için
+tasarlanmış sınıftır. Klinik kılavuzlar, tıp literatürü ve geçmiş vaka raporlarından
+bağlamsal bilgi çeker. retrieve_context metodu ile sorgu parametresiyle ilgili
+dokümanları getirir. embed_query metodu ile metin sorgularını vektör uzayına
+dönüştürür. Sentence-BERT veya Ada-002 embedding modeli kullanılabilir. FAISS
+veya Pinecone vektör veritabanı ile entegre çalışır. Klinik karar desteğini zenginleştirir
+ve hallüsinasyon riskini azaltır.
+
+LLMReportGenerator: Büyük dil modeli (LLM) tabanlı klinik rapor üretici
+sınıftır. generate_clinical_report metodu ile tahminler, açıklamalar ve RAG context'i
+kullanılarak yapılandırılmış klinik rapor üretir. GPT-4, Claude veya açık kaynak tıp
+modelleri (BioGPT, Med-PaLM) ile entegre edilebilir. Prompt engineering teknikleri ile
+doktor dilinde, kanıta dayalı raporlar oluşturur. RAGRetriever ile sıkı entegrasyon
+içerir, çünkü LLM'e context sağlanması gerekir. JSON formatında yapılandırılmış rapor
+ve Markdown formatında insan okunabilir rapor döndürür.
+
+LLMReportGenerator ve RAGRetriever İlişkisi:
+LLMReportGenerator sınıfı, RAGRetriever sınıfına bağımlıdır. Rapor üretimi
+sırasında önce RAGRetriever ile klinik kılavuzlardan ilgili bölümler çekilir. Ardından
+LLM'e tahminler, XAI açıklamaları ve çekilen context birlikte gönderilir. LLM, bu
+bilgileri sentezleyerek klinik rapor üretir. Bu yaklaşım, tamamen generatif raporlamaya
+göre daha güvenilir ve doğrulanabilir sonuçlar sağlar.
+
+Belirsizlik Tahmini
+UncertaintyEstimator: Model tahminlerindeki belirsizliği ölçen sınıftır.
+mc_dropout_inference metodu ile Monte Carlo Dropout tekniğini uygular. Aynı girdi
+için birden fazla tahmin yapılır ve dropout aktif tutulur. compute_confidence_interval
+metodu ile tahmin ortalaması ve güven aralığı hesaplanır. Epistemic ve aleatoric
+belirsizlik ayrımı yapabilir. Bayesian deep learning prensipleri uygulanır. Klinisyene
+tahmin güvenilirliği hakkında istatistiksel bilgi sunar. Triaj kararlarını iyileştirir, çünkü
+yüksek belirsizlik durumunda REVIEW seviyesi atanabilir.
+
+Monte Carlo Dropout Süreci:
+Model eğitim modunda tutulur ancak sadece dropout katmanları aktif bırakılır.
+Aynı EKG sinyali için N kez (örneğin 50 iterasyon) tahmin yapılır. Her iterasyonda
+farklı dropout mask uygulanır. N tahmin sonucundan ortalama ve standart sapma
+hesaplanır. Standart sapma yüksekse model tahmininde belirsizdir. Güven aralığı
+örneğin %95 seviyesinde hesaplanır: ortalama ± 1.96 × standart sapma.
+
+Transformer Tabanlı Alternatif Mimari
+TransformerBackbone: CNN tabanlı omurganın Transformer alternatifidir. Self-
+attention mekanizması ile EKG sinyallerini işler. forward metodu ile girdi sinyali alır ve
+gömme vektörü üretir. get_attention_weights metodu ile attention ağırlıklarını döndürür,
+böylece hangi zaman adımlarının önemli olduğu görülebilir. Positional encoding ile
+zamansal bilgi korunur. Multi-head attention ile farklı temsil alt uzayları öğrenilir.
+ECGBackbone ile aynı arayüzü implement eder, böylece değiştirilebilir
+(interchangeable). Uzun menzilli bağımlılıkları (long-range dependencies) CNN'den
+daha iyi yakalayabilir.
+
+TransformerBackbone ve ECGBackbone İlişkisi:
+Her iki sınıf da aynı arayüzü sağlar: girdi olarak 12 × 1000 sinyal alır, çıktı olarak
+256 boyutlu gömme döndürür. ECGCNN sınıfı, başlatma sırasında backbone
+parametresi ile ECGBackbone veya TransformerBackbone alabilir. Strategy pattern
+uygulanır. Kullanıcı config dosyasında backbone_type parametresi ile seçim yapabilir.
+Bu esneklik, farklı mimari denemeleri kolaylaştırır ve A/B testleri yapılabilir.
+
+Transformer Mimarisi Detayları:
+Giriş sinyali patch'lere bölünür (örneğin 50 patch, her biri 20 örnek). Her patch
+embedding katmanından geçer ve vektöre dönüşür. Positional encoding eklenir. Multi-
+head self-attention katmanları (örneğin 8 head) uygulanır. Feed-forward network ve
+layer normalization katmanları ekle. Birden fazla Transformer bloğu (örneğin 6 blok)
+üst üste konur. Son çıktı global average pooling ile 256 boyutlu vektöre indirgenir.
+
+Planlanan Sınıfların Sistemdeki Yeri
+
+RAG Paketi (src.rag): Yeni bir paket oluşturulacak. RAGRetriever ve
+LLMReportGenerator bu pakette yer alacak. Backend Paketi ve Kontrat Paketi ile
+entegre edilecek. Yeni API endpoint: POST /generate-report eklenmesi planlanıyor.
+
+Uncertainty Paketi (src.uncertainty): Yeni bir paket oluşturulacak.
+UncertaintyEstimator bu pakette yer alacak. Pipeline Paketi ile entegre edilecek.
+Tahmin response'larına uncertainty_metrics dictionary eklenecek.
+
+Model Paketi Genişlemesi: TransformerBackbone, mevcut Model Paketi'ne
+eklenecek. ECGBackbone ile aynı seviyede alternatif omurga olarak konumlandırılacak.
+Backward compatibility korunacak, mevcut CNN modelleri çalışmaya devam edecek.
+
+Şekil 17. Planlanan Sınıfların Diyagramı
+Varlık-ilişki diyagramı
+Bu bölümde CardioGuard-AI karar destek sisteminin veri modeli detaylı olarak
+açıklanmaktadır. Sistem, PTB-XL veritabanından gelen kaynak verileri, türetilmiş
+etiketleri, tahmin sonuçlarını ve konfigürasyon bilgilerini yönetmektedir.
+
+Genel Bakış
+CardioGuard-AI veri modeli, beş ana kategori altında organize edilmiş
+varlıklardan oluşmaktadır. Bu kategoriler, veri akışının farklı aşamalarını temsil eder ve
+sistemin veri yönetimi stratejisini yansıtır.
+
+Kaynak Veri Varlıkları: PTB-XL veritabanından gelen ham verileri içerir.
+PATIENT varlığı hasta demografik bilgilerini (yaş, cinsiyet, boy, kilo) saklar.
+ECG_RECORD varlığı 12 derivasyonlu EKG kayıtlarının metadata bilgilerini içerir.
+SCP_STATEMENT varlığı standart EKG tanı kodlarını ve açıklamalarını barındırır. Bu
+varlıklar, sistemin temel veri kaynağını oluşturur ve değiştirilmez (immutable)
+niteliktedir.
+
+Etiket Varlıkları: Model eğitimi için türetilmiş etiketleri içerir.
+SUPERCLASS_LABEL varlığı dört ana patoloji sınıfı için çoklu etiket yapısını saklar.
+MI_LOCALIZATION_LABEL varlığı MI tespit edilen kayıtlar için anatomik bölge
+etiketlerini içerir. Bu varlıklar, SCP kodlarından türetilir ve eğitim sürecinde kullanılır.
+
+Tahmin Varlıkları: API üzerinden yapılan tahmin işlemlerini yönetir.
+PREDICTION_REQUEST varlığı tahmin isteklerinin meta bilgilerini (case_id,
+request_id, timestamp, kullanıcı bilgisi) saklar. PREDICTION_RESULT varlığı model
+tahminlerini ve olasılık skorlarını içerir. Bu varlıklar, sistemin operasyonel veri tabanını
+oluşturur.
+
+Çıktı Varlıkları: Tahmin sonuçlarının detaylarını saklar.
+MI_LOCALIZATION_RESULT varlığı MI lokalizasyon tahminlerini içerir.
+XAI_ARTIFACT varlığı açıklanabilirlik görselleştirmelerinin dosya yollarını ve
+metadata bilgilerini barındırır.
+
+Konfigürasyon Varlıkları: Sistem yapılandırma verilerini yönetir.
+MODEL_CHECKPOINT varlığı model versiyonlarını ve checkpoint dosya yollarını
+saklar. THRESHOLD_CONFIG varlığı eşik değerlerini ve triaj kurallarını içerir. Bu
+varlıklar, sistemin davranışını kontrol eder ve versiyon yönetimi sağlar.
+
+VARLIK DETAYLARI
+PATIENT: Hasta demografik bilgilerini saklar. Birincil anahtar patient_id
+(integer). Yaş, cinsiyet, boy ve kilo alanları içerir. Toplam 18,885 hasta kaydı bulunur.
+Yaş aralığı 18-89, ortalama 57.2 yıldır.
+
+ECG_RECORD: EKG kayıtlarının metadata bilgilerini içerir. Birincil anahtar
+ecg_id (integer). PATIENT varlığına 1:N ilişki ile bağlanır. Dosya yolları (100Hz ve
+500Hz), kayıt tarihi ve çapraz doğrulama katmanı (strat_fold) alanları vardır. Toplam
+21,837 kayıt, her biri 10 saniye ve 12 derivasyon içerir.
+
+SCP_STATEMENT: Standart EKG tanı kodlarını barındırır. Birincil anahtar
+scp_code (string). Tanı açıklaması ve diagnostik sınıf alanları içerir. ECG_RECORD ile
+M:N ilişki (SCP_CODE_ASSIGNMENT ara varlığı ile).
+
+SUPERCLASS_LABEL: Dört patoloji sınıfı için çoklu etiket yapısı. Birincil
+anahtar ecg_id. ECG_RECORD ile 1:1 ilişki. label_MI, label_STTC, label_CD,
+label_HYP ve is_norm boolean alanları içerir. Etiket dağılımı: MI %25.1, STTC %24.0,
+CD %22.5, HYP %12.2, NORM %43.6.
+
+MI_LOCALIZATION_LABEL: MI lokalizasyon etiketlerini saklar. Birincil
+anahtar ecg_id. ECG_RECORD ile 1:0..1 ilişki (opsiyonel). label_AMI, label_ASMI,
+label_ALMI, label_IMI, label_LMI boolean alanları vardır. Sadece MI pozitif kayıtlar
+için oluşturulur.
+
+PREDICTION_REQUEST: API tahmin isteklerini yönetir. Birincil anahtar
+request_id (UUID). ECG_RECORD ve MODEL_CHECKPOINT varlıklarına yabancı
+anahtarlarla bağlanır. Timestamp, user_id, case_id ve input_file_path alanları içerir.
+
+PREDICTION_RESULT: Model tahmin sonuçlarını saklar. Birincil anahtar
+result_id (UUID). PREDICTION_REQUEST ile 1:1 ilişki. prob_MI, prob_STTC,
+prob_CD, prob_HYP, prob_NORM olasılık alanları içerir. Triage_level
+(YÜKSEK/ORTA/DÜŞÜK/İNCELEME) ve agreement_type (model tutarlılık) alanları
+vardır.
+
+MI_LOCALIZATION_RESULT: MI bölge tahminlerini içerir. Birincil anahtar
+localization_id (UUID). PREDICTION_RESULT ile 1:0..1 ilişki. prob_AMI,
+prob_ASMI, prob_ALMI, prob_IMI, prob_LMI alanları ve mapping_fingerprint
+(8ab274e06afa1be8) doğrulama alanı vardır.
+
+XAI_ARTIFACT: Açıklanabilirlik çıktılarını saklar. Birincil anahtar artifact_id
+(UUID). PREDICTION_RESULT ile 1:N ilişki. artifact_type (GRADCAM,
+SHAP_WATERFALL, SHAP_SUMMARY), file_path ve sanity_check_passed alanları
+içerir.
+
+MODEL_CHECKPOINT: Model versiyonlarını yönetir. Birincil anahtar
+checkpoint_id (integer). Model tipi (SUPERCLASS_CNN, BINARY_MI_CNN,
+LOCALIZATION_CNN, XGBOOST), version, checkpoint_hash ve is_active alanları
+vardır. Her model tipi için sadece bir checkpoint aktif olabilir.
+
+THRESHOLD_CONFIG: Eşik değerleri ve triaj kurallarını içerir. mi_threshold,
+sttc_threshold, cd_threshold, hyp_threshold alanları karar eşiklerini belirler.
+ensemble_alpha (varsayılan 0.15) XGBoost ağırlığını saklar. triage_rules JSON alanı
+triaj belirleme kurallarını içerir.
+
+Veri Bölümlemesi: PTB-XL 10 katlı çapraz doğrulama için bölümlenmiştir.
+Katmanlar 1-8 eğitim (17,469 kayıt), katman 9 doğrulama (2,189 kayıt), katman 10 test
+(2,179 kayıt) için kullanılır.
+
+Planlanan Varlıklar (v2.0):
+RAG_CONTEXT varlığı klinik kılavuz bağlamlarını saklayacak.
+UNCERTAINTY_SCORE varlığı Monte Carlo belirsizlik değerlerini içerecek.
+LLM_REPORT varlığı otomatik klinik raporları barındıracak.
+
+Şekil 18. Varlık - İlişki Diyagramı
+
+Dağıtım Diyagramı
+Mimari beş ana katmandan oluşur. İstemci katmanı, web tarayıcı veya API
+istemcisi üzerinden HTTPS istekleri gönderir. Yük dengeleyici katmanı, NGINX ters
+proxy sunucusu ile port 443 üzerinden gelen trafiği dengeler ve SSL/TLS sonlandırma
+yapar. Uygulama sunucusu katmanı, iki Docker konteyneri içinde çalışan FastAPI
+servislerini barındırır. Her konteyner bağımsız olarak port 8000 ve 8001'de dinler.
+Depolama katmanı, model checkpoint'leri, log dosyaları ve XAI artifactları için merkezi
+dosya sistemi sağlar. Veri katmanı, PTB-XL veri setini salt okunur modda sunar.
+
+Yatay ölçeklendirme stratejisi ile sistem yüksek erişilebilirlik sağlar. İki FastAPI
+konteyneri paralel çalışır ve NGINX round-robin algoritması ile istekleri dağıtır. Her
+konteyner PyTorch CNN modelleri, XGBoost ensemble katmanı ve XAI bileşenlerini
+içerir. Model dosyaları salt okunur volume olarak mount edilir ve tüm konteynerler aynı
+checkpoint'leri kullanır. Konteyner çökmesi durumunda NGINX otomatik olarak
+sağlıklı instance'a yönlendirme yapar. Healthcheck endpoint'i (/health) ile konteyner
+durumu sürekli izlenir.
+
+Geliştirme ortamı yerel makinede Python 3.10 sanal ortam ile çalışır. Uvicorn
+reload mode sayesinde kod değişiklikleri anında yansır. Mini PTB-XL subset ile hızlı
+test yapılabilir. Docker Compose ile çok konteynerli yerel test ortamı oluşturulur. Pytest
+ile birim ve entegrasyon testleri çalıştırılır.
+
+Sistemin v2.0 sürümü için altyapı genişletmeleri planlanmaktadır. Vektör
+veritabanı (FAISS veya Pinecone) RAG entegrasyonu için klinik kılavuzları
+depolayacaktır. LLM servisi (GPT-4 veya Claude API) otomatik rapor üretimi için
+eklenecektir. GPU kümesi (NVIDIA T4 veya A10) Transformer tabanlı modeller için
+sağlanacaktır. Anlık istek kapasitesi 100 req/s'den 1000 req/s'ye çıkarılacaktır.
+Konteyner sayısı 2'den 10+'ya ölçeklendirilecektir. Latency hedefi p99 metriğinde
+500ms'den 200ms'ye düşürülecektir.
+
+Bileşen Detayları
+NGINX Yük Dengeleyici: Port 443'te HTTPS isteklerini dinler. SSL/TLS 1.3
+sertifikası ile güvenli bağlantı sağlar. Port 80'den gelen HTTP istekleri HTTPS'e
+yönlendirilir. Upstream olarak iki FastAPI instance tanımlanır (10.0.2.10:8000 ve
+10.0.2.11:8001). Health check ile her 30 saniyede backend durumu kontrol edilir. CORS
+middleware ile izin verilen domainler belirlenir. Rate limiting ile DDoS koruması
+uygulanır.
+
+FastAPI Konteyner: Python 3.10 slim base image kullanılır. Uvicorn ASGI server
+ile 4 worker process çalıştırılır. Port 8000 ve 8001'de dinler. GET /health endpoint'i
+container healthcheck için kullanılır. GET /ready endpoint'i model yüklenme durumunu
+bildirir. PYTHONPATH environment variable ile uygulama yolu ayarlanır.
+Healthcheck her 30 saniyede bir curl ile /health'e istek atar, 3 başarısızlıkta container
+unhealthy işaretlenir.
+
+Model Katmanı: Binary CNN modeli (ecgcnn.pt, 145KB) MI/Normal
+sınıflandırma yapar. Superclass CNN modeli (ecgcnn_superclass.pt, 433KB) dört
+patoloji sınıfını tespit eder. Lokalizasyon CNN modeli (ecgcnn_localization.pt, 433KB)
+beş anatomik bölge için tahmin üretir. Dört XGBoost modeli (MI, STTC, CD, HYP için
+birer model.json, her biri ~50KB) ensemble katmanını oluşturur. StandardScaler
+(scaler.joblib) feature normalizasyonu yapar. Kalibratörler (calibrator.joblib) olasılık
+kalibrasyonu sağlar. Tüm modeller container startup'ta belleğe yüklenir ve singleton
+pattern ile tutulur.
+
+Depolama Yapısı: Ana dizin /opt/cardioguard-ai altında organize edilir.
+checkpoints dizini PyTorch ve XGBoost model dosyalarını saklar (salt okunur).
+logs/xgb_superclass dizini XGBoost eğitim loglarını ve metadata dosyalarını içerir (salt
+okunur). artifacts dizini XAI çıktılarını (PNG, JSON) saklar (okuma/yazma). data/ptbxl
+dizini PTB-XL veri setini barındırır (salt okunur). outputs dizini raporlar ve sistem
+logları için kullanılır (okuma/yazma).
+
+Docker Volume Mapping: Host ./checkpoints dizini container /app/checkpoints'e
+ro (read-only) modda mount edilir. Host ./logs/xgb_superclass dizini container
+/app/logs/xgb_superclass'a ro modda mount edilir. Host ./artifacts dizini container
+/app/artifacts'a rw (read-write) modda mount edilir. Bu yaklaşım ile model dosyaları
+container içinden değiştirilemez ve veri bütünlüğü korunur.
+
+Ağ Yapılandırması: İstemci harici ağdan NGINX'e HTTPS ile erişir (443 portu).
+NGINX DMZ katmanında konumlanır (10.0.1.10 IP adresi). FastAPI instance'ları iç
+ağda çalışır (10.0.2.10 ve 10.0.2.11 IP adresleri). Sadece gerekli portlar açıktır, diğer
+tüm portlar firewall ile kapalıdır. TLS 1.3 ile transit şifreleme sağlanır.
+
+Sunucu Gereksinimleri: Minimum donanım 4 çekirdek CPU, 8 GB RAM, 50 GB
+SSD gerektirir. Önerilen donanım 8 çekirdek CPU, 16 GB RAM, 100 GB NVMe
+SSD'dir. GPU gerekli değildir, tüm inference CPU üzerinde çalışır. Ağ bant genişliği
+minimum 100 Mbps, önerilen 1 Gbps'dir. Bu gereksinimler, eş zamanlı 100 istek/saniye
+yükünü karşılar.
+
+Docker Compose Yapılandırması: cardioguard-api servisi Python 3.10-slim base
+image'dan build edilir. Resource limits olarak 4 CPU ve 8GB RAM tanımlanır.
+Resource reservations olarak 2 CPU ve 4GB RAM ayrılır. Healthcheck CMD ile curl -f
+http://localhost:8000/health komutu 30 saniyede bir çalıştırılır. Restart policy unless-
+stopped olarak ayarlanır, manuel durdurma dışında her zaman yeniden başlatılır.
+
+Şekil 19. Dağıtım Diyagramı
+SIRALI AKIŞ DİYAGRAMLARI
+Sıralı akış diyagramları, sistemin çalışma zamanı davranışını zaman ekseninde
+gösterir. CardioGuard-AI'da dört ana akış ve gelecek sürüm için planlanan iki akış
+bulunmaktadır.Ana tahmin akışı, klinisyenin EKG göndermesinden AIResult yanıtının
+alınmasına kadar tüm adımları kapsar. Sistem başlatma akışı, fail-fast mekanizması ile
+model checkpoint'lerinin doğrulanması ve belleğe yüklenmesi sürecini gösterir.
+Tutarlılık kontrolü akışı, Binary ve Superclass MI modellerinin sonuçlarının
+karşılaştırılması ve triaj seviyesi belirlenmesini detaylandırır. XGBoost hibrit pipeline
+akışı, CNN backbone'dan feature extraction, StandardScaler normalizasyonu, XGBoost
+tahmin ve kalibrasyon adımlarını içerir.
+
+Planlanan akışlar v2.0 sürümü için tasarlanmıştır. RAG entegrasyonu akışı, klinik
+kılavuzlardan bağlam çekme ve LLM ile rapor üretme sürecini gösterecektir. Belirsizlik
+tahmini akışı, Monte Carlo dropout ile 30 iterasyonluk tahmin üretme ve epistemic
+uncertainty hesaplama adımlarını içerecektir.
+
+EKG sinyalinin yüklenmesinden sonuç üretilmesine kadar olan tam tahmin süreci
+yedi ana fazdan oluşur. Klinisyen POST /predict endpoint'ine EKG sinyalini gönderir.
+API katmanı MinMax normalizasyonu ile sinyali 0-1 aralığına ölçekler. Paralel tahmin
+fazında Superclass CNN ve Binary CNN modelleri eş zamanlı çalıştırılır. Superclass
+CNN dört patoloji sınıfı için olasılıklar üretir, Binary CNN MI/Normal kararı verir.
+XGBoost katmanı CNN backbone'dan 64 boyutlu feature vector çıkarır, StandardScaler
+ile normalize eder ve her sınıf için tahmin üretir. Ensemble fazında CNN ve XGBoost
+olasılıkları α=0.15 ağırlığı ile birleştirilir. ConsistencyGuard bileşeni Binary ve
+Superclass MI olasılıklarını karşılaştırır ve AGREE_MI, AGREE_NO_MI veya
+DISAGREE durumunu belirler. MI tespit edilirse Lokalizasyon CNN beş anatomik
+bölge için tahmin üretir. GradCAM bileşeni Superclass CNN için zamansal açıklama
+haritaları oluşturur. AIResultMapper tüm sonuçları AIResult v1.0 kontratına göre JSON
+formatında paketler ve klinisyene döner.
+
+Şekil 20. Ana Tahmin Akışı – Klinisyenden başlayarak API, CNN, XGBoost, Guard,
+Lokalizasyon ve XAI bileşenleri arasındaki etkileşim. 16 adımlık sıralı akış gösterilmektedir
+
+Sistem Başlatma Akışı
+Sistemin fail-fast prensibi ile güvenli başlatılması dört ana aşamadan oluşur. Main
+bileşeni startup'ta Doğrulayıcı modülünü çağırır. Doğrulayıcı her model checkpoint'i
+için boyut kontrolü yapar. Binary CNN için beklenen çıktı boyutu 1, Superclass CNN
+için 4, Lokalizasyon CNN için 5 olmalıdır. Boyut uyuşmazlığı durumunda
+CheckpointMismatchError hatası fırlatılır ve sistem sys.exit(1) ile durdurulur.
+Fingerprint kontrolünde MI lokalizasyon eşleme parmak izi 8ab274e06afa1be8 değeri
+ile karşılaştırılır. Değişiklik varsa MappingDriftError hatası fırlatılır. Tüm doğrulamalar
+başarılıysa Loader bileşeni çağrılır. Loader sırasıyla Binary CNN, Superclass CNN,
+Lokalizasyon CNN ve XGBoost modellerini belleğe yükler. Her model singleton pattern
+ile State bileşeninde saklanır. State bileşeni Main'e Hazır sinyali gönderir ve sistem API
+isteklerini kabul etmeye başlar.
+Şekil 21.Sistem Başlatma Akışı – Main, Doğrulayıcı, Loader ve State bileşenleri arasındaki fail-
+fast mekanizması. Loop yapısı her model için tekrar eden kontrolleri gösterir.
+
+Tutarlılık Kontrolü Akışı
+Binary ve Superclass MI modellerinin sonuçları arasındaki uyum kontrolü üç
+senaryo üretir. API bileşeni ensemble sonrası P_super ve P_binary olasılıklarını
+ConsistencyGuard'a gönderir. Guard önce Superclass MI için karar eşiğini uygular:
+P_MI >= 0.01 ise super_karar pozitif olur. Sonra Binary MI için karar eşiğini uygular:
+P_MI >= 0.5 ise binary_karar pozitif olur. Her iki karar da pozitif ise AGREE_MI
+sonucu ve YÜKSEK triaj seviyesi döner. Her iki karar da negatif ise AGREE_NO_MI
+sonucu ve DÜŞÜK triaj seviyesi döner. Kararlar uyumsuz ise DISAGREE sonucu ve
+İNCELEME triaj seviyesi döner. DISAGREE_TYPE_1 durumu Superclass pozitif ama Binary
+negatif olduğunda, DISAGREE_TYPE_2 durumu Binary pozitif ama Superclass negatif
+olduğunda oluşur.
+Şekil 22. Tutarlılık Kontrolü Akışı – API ve Guard bileşenleri arasında alt (alternative) yapısı ile
+üç farklı senaryo gösterilmektedir.
+
+XGBoost Hibrit Pipeline Akışı
+
+CNN ve XGBoost modellerinin hibrit kombinasyonu dokuz adımlı bir pipeline
+oluşturur. API bileşeni EKG sinyalini CNN Backbone'a gönderir ve 64 boyutlu
+embedding vector alır. Bu vector, Superclass CNN'in son fully-connected katmanından
+önceki layer'dan çıkarılır. Scaler bileşeni StandardScaler ile feature'ları normalize eder,
+her boyutun ortalaması 0 ve standart sapması 1 olacak şekilde ölçekler. Loop yapısı ile
+her sınıf için (MI, STTC, CD, HYP) sırasıyla işlem yapılır. XGBoost modeli
+predict_proba metodu ile ham olasılık üretir. Calibrator bileşeni IsotonicRegression ile
+olasılığı kalibre eder ve güvenilirlik artırır. API dört sınıf için kalibre olasılıklar elde
+ettikten sonra ensemble fazına geçer. Ensemble formülü P_final = 0.15 × P_cnn + 0.85
+× P_xgb şeklindedir, yani XGBoost ağırlıklı kombinasyon yapılır.
+Şekil 23XGBoost Hibrit Pipeline Akışı – API, Backbone, Scaler, XGB ve Calib bileşenleri
+arasındaki etkileşim. Loop yapısı her sınıf için tekrar eden tahmin sürecini gösterir.
+
+Planlanan Akışlar (v2.0)
+Sistemin gelecek sürümünde iki yeni akış eklenecektir. RAG entegrasyonu akışında API
+bileşeni tahmin sonuçlarını ve klinik sorguyu RAG modülüne gönderecektir. RAG
+vektör veritabanından ilgili klinik kılavuz paragraflarını çekecek ve API'ye dönecektir.
+API tahmin sonuçları ile kılavuz bağlamını birleştirip LLM modülüne gönderecektir.
+LLM (GPT-4 veya Claude API) klinik rapor metni üretecek ve API'ye iletecektir.
+Belirsizlik tahmini akışında API bileşeni Model'e 30 iterasyon boyunca Dropout
+katmanları aktif şekilde istek gönderecektir. Her iterasyonda farklı nöronlar devre dışı
+kalacak ve farklı tahmin üretilecektir. API 30 tahmin için ortalama ve varyans
+hesaplayacak, epistemic uncertainty değeri türetecektir. Yüksek belirsizlik durumunda
+otomatik olarak İNCELEME triajı atanacaktır.
+Şekil 25. Monte Carlo Dropout ile belirsizlik tahmini akışı.
+Şekil 24Planlanan Akışlar (v2.0) – RAG entegrasyonu ile klinik kılavuz kullanımı ve LLM
+rapor üretimi.
+
+5 TARTIŞMA
+Bu çalışmanın “sonuç” çıktıları, bir sonraki dönemde geliştirilecek CardioGuard-
+AI projesinin yalnızca fikir düzeyinde kalmaması için; tanım–analiz–tasarım–planlama
+adımlarını uygulanabilir ve doğrulanabilir bir mühendislik dokümantasyonuna
+dönüştürmektedir. Bu kapsamda oluşturulan gereksinim listeleri, UML diyagramları
+(use case ve class), veri modeli (ERD), sistemin üretim perspektifi (deployment) ve
+çalışma zamanı akışını tanımlayan sıralı akış (sequence) kurgusu ile proje planı; hem
+geliştirme sürecini hızlandıran hem de hata/yeniden-iş yapma riskini azaltan verimli
+çıktılar olarak değerlendirilmiştir.
+
+Öncelikle gereksinim setinin verimliliği, kapsamı netleştirmesi ve ölçülebilir
+hedefler sunması ile ortaya çıkmaktadır. Fonksiyonel gereksinimlerin yanı sıra
+güvenilirlik–güvenlik ve performans gereksinimlerinin ayrı başlıklar altında
+tanımlanması; “ne yapılacak?” sorusuna ek olarak “hangi kalite seviyesinde yapılacak?”
+sorusunu da cevaplamaktadır. Fail-fast yaklaşımı, API kontrat uyumu, eşleme parmak
+izi (fingerprint) gibi kontrollerin gereksinimlere bağlanması; entegrasyon sırasında
+ortaya çıkabilecek sessiz hataları erken aşamada engelleyerek hem zaman kaybını hem
+de yanlış klinik çıktıya gitme riskini düşürür. Benzer şekilde API yanıt süresi, model
+boyutu ve CPU desteği gibi performans hedefleri, sistemin yalnızca doğru çalışmasını
+değil; pratikte kullanılabilir olmasını da garanti altına alacak şekilde çerçevelemektedir.
+
+Use case diyagramı, sistemin aktörlerini ve kritik etkileşimlerini netleştirerek
+verimlilik sağlar. Klinik senaryoda en önemli risklerden biri, belirsiz gereksinimler
+nedeniyle yanlış kullanıcı akışları tasarlamaktır. Use case çıktısı; klinisyen, sistem,
+model servisleri ve olası “inceleme/triage” adımlarını görünür hale getirerek, daha kod
+yazılmadan önce kapsam dışı işlerin elenmesini ve doğru işin doğru sırayla
+kurgulanmasını mümkün kılar. Bu, geliştirme boyunca geri dönüş (rework) maliyetini
+azaltır.
+
+Class diyagramları ve paket bağımlılıkları ise modülerliği güvence altına alarak
+verimliliği artırır. CardioGuard-AI gibi bir sistemde veri hazırlama, model mimarileri,
+çıkarım pipeline’ı, XAI üretimi ve API kontratının birbirine karışması; hem test
+edilebilirliği düşürür hem de bakım maliyetini artırır. Modüllerin ayrıştırılmış biçimde
+tasarlanması; ekip içinde paralel geliştirmeyi kolaylaştırır, bir bileşende yapılan
+değişikliğin diğer bileşenlere etkisini sınırlayarak daha hızlı iterasyon sağlar. Ayrıca
+tutarlılık kapısı (Consistency Gate) gibi karar mekanizmalarının tasarım seviyesinde
+görünür olması, sistem davranışının “kodun içine gömülmek” yerine anlaşılabilir bir
+şekilde yönetilmesini sağlar.
+
+ERD çıktısı, veri bütünlüğü ve izlenebilirlik açısından projenin verimli olmasının
+temel dayanaklarından biridir. Model çıktılarının (AIResult), kullanılan checkpoint
+versiyonlarının, eşik değerlerinin ve XAI artefact’larının ilişkilendirilerek saklanması;
+hem hataların kök neden analizini (root-cause analysis) kolaylaştırır hem de
+denetlenebilirliği artırır. Sağlık alanında “bu karar nasıl alındı?” sorusuna yalnızca
+model olasılığı ile değil; kullanılan model versiyonu, eşik konfigürasyonu ve açıklama
+artefact’ları ile cevap verebilmek kritik bir gereksinimdir. Bu nedenle ERD, ileride
+yapılacak klinik validasyon ve saha kullanım senaryolarında zaman kazandıran stratejik
+bir çıktıdır.
+
+Dağıtım (deployment) perspektifi ve bileşen detayları, sistemin üretim ortamına
+taşınabilirliğini artırdığı için verimlidir. Örneğin NGINX ile TLS sonlandırma, birden
+fazla servis instance’ı ile yatay ölçeklenebilme ve healthcheck yaklaşımı; çalışır bir
+prototipin “tek makinede çalışan demo” olmaktan çıkıp operasyonel bir servise
+dönüşmesi için gerekli çerçeveyi sağlar. Bu yaklaşım, sistemin süreklilik ihtiyacını
+karşılar; servis arızalarında kontrollü geri dönüş ve izleme kabiliyeti ile kesintiyi azaltır.
+Sonuç olarak deployment tasarımı, projenin hayata geçme olasılığını artırdığı için
+doğrudan verimlilik göstergesidir.
+
+Sequence diyagramları/akış kurgusu, çalışma zamanı davranışını adım adım
+görünür hale getirerek geliştirme sürecini hızlandırır. Ana tahmin akışında
+normalizasyon, paralel model çalıştırma (Superclass + Binary), hibrit karar katmanı (ör.
+XGBoost/ensemble), sonuç birleştirme ve tutarlılık kontrolü gibi adımların
+netleştirilmesi; implementasyon sırasında “hangi adım nerede yapılacak?” belirsizliğini
+azaltır ve test senaryolarının daha sistematik türetilmesini sağlar. Ayrıca planlanan v2.0
+akışlarının (ör. belirsizlik tahmini, inceleme triajı, klinik kılavuz temelli raporlama/RAG
+yaklaşımı) tasarım seviyesinde konumlandırılması, sistemin genişleyebilirliğini ve
+sürdürülebilirliğini artıran bir verimlilik unsurudur.
+
+İş paketleri tablosu, iş paketleri zamanlama tablosu ve UX şemaları, projenin
+yönetilebilirliğini ve uygulanabilirliğini yükseltir. İş paketleri; bağımlılıkları,
+teslimatları ve sorumlulukları netleştirerek “yapılacak işin” küçük ve ölçülebilir
+parçalara ayrılmasını sağlar. Zamanlama planı, hedeflenen sürede bitirme riskini
+düşürür ve kritik yolun erken tespit edilmesini kolaylaştırır. UX şemaları sayesinde
+kullanıcı arayüzü gereksinimleri geliştirme başlamadan netleşir; böylece sonradan
+yapılacak pahalı arayüz değişiklikleri azalır ve kullanıcı deneyimi erken aşamada
+doğrulanabilir hale gelir.
+
+Bununla birlikte bu çıktılar, projenin mevcut aşamasının ağırlıklı olarak
+“dokümantasyon ve tasarım” odaklı olduğunu da göstermektedir. Henüz gerçek klinik
+ortam entegrasyonu, prospektif doğrulama, kullanıcı çalışmaları ve saha performansı
+gibi adımlar tamamlanmamıştır. Ayrıca veri seti dağılımı, sınıf dengesizliği, farklı
+cihazlardan gelen EKG’lerde olası domain shift, model kalibrasyonu ve açıklama
+yöntemlerinin klinik faydasının ölçülmesi gibi konular, uygulama aşamasında ek
+çalışma gerektirecektir. Buna rağmen, bu raporda üretilen sonuçlar; riskleri önceden
+görünür kıldığı, doğrulanabilir kalite hedefleri tanımladığı, sistem davranışını şeffaf
+biçimde modellediği ve projeyi uygulanabilir bir geliştirme planına bağladığı için
+verimlidir.
+
+Tartışmanın Sonucu :
+Sonuç olarak CardioGuard-AI için ortaya konan gereksinimler, tasarım
+artefaktları ve planlama çıktıları; bir sonraki dönemde yapılacak geliştirmeye doğrudan
+rehberlik edecek, yeniden-iş maliyetini azaltacak ve sistemin güvenilir, ölçeklenebilir ve
+denetlenebilir biçimde hayata geçirilmesini kolaylaştıracaktır. Bu nedenle Tartışma
+bölümünde savunulan temel görüş; elde edilen sonuçların projenin mühendislik
+kalitesini yükselten ve uygulamaya geçişi hızlandıran verimli çıktılar olduğudur.
+
+6 İş paketleri ve zamanlama planı.........................................................................................
+Bu bölümde, raporun ana akışını bölmeden verilmesi uygun olmayan ancak
+çalışmayı destekleyen ek bilgiler yer alır. Kullanılan anketler, ayrıntılı tablolar, ek
+görseller, kod parçaları, teknik çizimler veya kullanıcı kılavuzu gibi materyaller bu
+kısımda sunulur. Her ek numaralandırılarak ve kısa bir açıklama ile düzenli şekilde
+verilir.
+
+Bu bölümde CardioGuard-AI projesinin bir sonraki dönemde gerçekleştirilecek
+geliştirme süreci, iş paketleri (WBS) yaklaşımıyla yapılandırılarak sunulmaktadır.
+Amaç; mevcut tezde oluşturulan gereksinim, UML ve veri modeli çıktıları üzerine
+kurulu biçimde, implementasyonun yönetilebilir teslimatlar halinde ilerlemesini
+sağlamaktır. Bu kapsamda tamamlanan çalışmalar “Faz 1”, planlanan çalışmalar ise
+“Faz 2–Faz 4” altında organize edilmiştir.
+
+Faz Yapısı ve Kapsam
+Proje planı dört fazdan oluşmaktadır:
+Faz 1 (Tamamlandı): Temel AI pipeline ve Python backend
+Faz 2 (Planlı): Java orkestratör ve entegrasyon
+Faz 3 (Planlı): Frontend ve klinik kullanıma hazırlık
+Faz 4 (Planlı): Deployment ve operasyonel süreçler (izleme, CI/CD, güvenlik)
+Bu fazlar; modelleme/çıkarım bileşenlerinden başlayarak servisleşme, kullanıcı
+arayüzü ve üretim ortamına geçişe kadar uzanan uçtan uca geliştirme hattını temsil eder.
+
+Faz 1: Temel AI Pipeline ve Python Backend (Tamamlandı)
+
+Faz 1 kapsamında; veri hazırlama, CNN tabanlı model altyapısı, model eğitimi,
+hibrit/ensemble yaklaşımı, tutarlılık kontrolü (Consistency Gate), XAI bileşenleri
+(Grad-CAM/SHAP) ve Python servis katmanı tamamlanmıştır. Faz 1’de tamamlanan iş
+paketleri ve her bir paketin çıktı seti Tablo 1’de sunulmaktadır.
+
+Bu fazın sonunda sistemin modüler yapısı netleşmiş; model, veri, pipeline, XAI,
+kontrat ve backend bileşenleri ayrı sorumluluk alanları olarak konumlandırılmıştır. Bu
+yapı, tezde tanımlanan paket mimarisi ile uyumludur (src.models, src.data, src.pipeline,
+src.xai, src.contracts, src.backend).
+
+Tablo 10 Faz 1 Tamamlanan İş Paketleri ve Çıktıları (WP1.0–WP1.7)
+WP
+ID İş Paketi Adı Durum Çıktılar Tamamlanma
+WP1.0 Proje Altyapısı ✅ Repo yapısı, config, CI/CD %100
+
+WP1.1 Veri Hazırlama ✅^ PTB-XL loader, etiketleme, cache sistemi %100
+
+WP1.2 CNN Model Altyapısı ✅^ ECGBackbone, BinaryHead, MultiClassHead, FiveClassHead %100
+
+WP1.3 Model Eğitimi ✅^ Binary MI, Superclass, Lokalizasyon modelleri %100
+
+WP1.4 Hibrit Ensemble ✅ XGBoost OvR, embedding pipeline %100
+
+WP1.5 Tutarlılık Kapısı ✅ ConsistencyGuard, AgreementType, triage %100
+
+WP1.6 XAI Modülü ✅ Grad-CAM, SHAP, SanityChecker, Reporter %100
+
+WP1.7 Python API ✅ FastAPI, AIResult v1.0 kontratı %100
+
+Faz 2: Java Orkestratör ve Entegrasyon (Planlı)
+Faz 2’nin amacı, Python AI servisinin kurumsal kullanım senaryolarına uygun
+şekilde Java/Spring Boot tabanlı bir orkestrasyon katmanı tarafından yönetilmesidir. Bu
+fazda; gateway mimarisi, veritabanı entegrasyonu, kimlik doğrulama/rol yönetimi, RAG
+tabanlı klinik bilgi erişimi ve workflow yönetimi gibi bileşenler ele alınacaktır. Faz 2 iş
+paketleri, beklenen teslimatlar ve tamamlanma ölçütleri Tablo 11’de sunulmuştur.
+Faz 2 planı, entegrasyon riskini azaltmak için altyapı kurulumundan başlayıp,
+veri/servis katmanları ve güvenlik kontrolleri üzerinden ilerleyecek şekilde
+kurgulanmıştır.
+Tablo 11 Faz 2 İş Paketleri ve Çıktıları (WP2.1–WP2.7)
+WP
+ID
+İş Paketi
+Adı Amaç Alt İşler Çıktılar
+Kabul
+Kriteri
+Bağım
+lılık
+Sü
+re
+WP
+2.1
+Java
+Spring
+Boot
+Altyapısı
+Orkestra
+syon
+katmanı
+nı
+oluşturm
+ak
+Spring Boot
+setup,
+Maven/Gradle,
+JPA entity'ler
+Çalışan
+Spring
+Boot
+projesi
+Build
+başarılı,
+health
+endpoint
+çalışır
+WP1.7
+1
+haf
+ta
+WP
+2.2
+AI
+Gateway
+Servisi
+Python
+AI
+servisine
+köprü
+RestTemplate/W
+ebClient, retry
+logic, circuit
+breaker
+Gateway
+controller
++ service
+Python
+API ile
+iletişim
+kuruldu
+WP2.1
+1
+haf
+ta
+WP
+2.3
+Veritabanı
+Katmanı
+Analiz
+geçmişi
+ve
+kullanıcı
+yönetimi
+PostgreSQL
+schema, JPA
+repository'ler,
+migration
+DB
+schema +
+CRUD
+operasyonl
+arı
+Veri
+kalıcı,
+tekrar
+okunabil
+ir
+WP2.1
+1
+haf
+ta
+WP
+2.4
+Kimlik
+Doğrulam
+a
+JWT
+tabanlı
+auth
+sistemi
+Spring Security,
+JWT token, rol
+yönetimi
+Auth
+endpoint'le
+r + token
+üretimi
+Login/lo
+gout
+çalışır
+WP2.3
+1
+haf
+ta
+WP
+2.5
+RAG
+Entegrasy
+onu
+Klinik
+bilgi
+bankası
+sorgusu
+LangChain4j,
+ChromaDB,
+embedding
+modeli
+RAG
+pipeline
+çalışır
+Sorgu-
+cevap
+akışı
+tamamla
+ndı
+WP2.2
+2
+haf
+ta
+WP
+2.6
+İş Akışı
+Motoru
+Çok
+adımlı
+analiz
+orkestas
+yonu
+State machine,
+async işlem,
+event'ler
+Workflow
+engine
+çalışır
+Analiz
+adımları
+sıralı
+çalışır
+WP2.2
+,
+WP2.5
+1
+haf
+ta
+WP
+2.7
+API
+Gateway
+&
+Dokümant
+asyon
+Dış
+dünyaya
+açık API
+OpenAPI spec,
+Swagger UI, rate
+limiting
+API
+dokümanta
+syonu
+Swagger
+'dan test
+edilebili
+r
+WP2.6
+1
+haf
+ta
+Faz 3: Frontend ve Klinik Kullanıma Hazırlık (Planlı)
+
+Faz 3 kapsamında hedef; klinisyen kullanımını destekleyecek web arayüzünün
+geliştirilmesi, EKG yükleme ve sonuç ekranlarının oluşturulması, XAI çıktılarının
+arayüzde görselleştirilmesi ve raporlama/geçmiş ekranları ile izlenebilirliğin
+artırılmasıdır. Faz 3 iş paketleri ve hedef çıktıları Tablo 12’te sunulmuştur.
+
+Bu faz, ders çıktısı olarak istenen en az 3 sayfanın şematik UX tasarımı ile de
+doğrudan ilişkilidir. Bu nedenle Faz 3 kapsamında üretilen arayüz taslakları, tezde
+Şekil 26 ,Şekil 27 ve Şekil 28 olacak şekilde sunulmuştur.
+
+Şekil 26. UX Şema 1 (EKG Yükleme)
+Tablo 12 Faz 3 İş Paketleri ve Çıktıları (WP3.1–WP3.8)
+WP
+ID
+İş Paketi
+Adı Amaç Alt İşler
+Çıktıla
+r
+Kabul
+Kriteri
+Bağıml
+ılık
+Sü
+re
+WP
+3.1
+Frontend
+Altyapısı
+Modern
+web
+arayüzü
+temeli
+React/Next.js
+setup, design
+system,
+routing
+Boş
+proje +
+temel
+yapı
+Build
+başarılı WP2.7
+1
+haf
+ta
+WP
+3.2
+EKG
+Yükleme
+Ekranı
+Kullanıcı
+dosya
+upload
+akışı
+Drag-drop,
+format
+validasyon,
+preview
+Upload
+sayfası
+çalışır
+Dosya
+başarıyl
+a
+yüklene
+bilir
+WP3.1
+1
+haf
+ta
+WP
+3.3
+Analiz
+Sonuç
+Ekranı
+Tahmin
+sonuçları
+nın
+gösterimi
+Olasılık
+chart'ları,
+triage badge,
+özet
+Sonuç
+dashboa
+rd'u
+Tüm
+tahmin
+verileri
+görünür
+WP3.1
+1
+haf
+ta
+WP
+3.4
+XAI
+Görselleşt
+irme
+Açıklama
+artefact'la
+rının
+gösterimi
+12-lead
+overlay,
+SHAP
+grafikler,
+narrative
+XAI
+viewer
+kompon
+enti
+Grad-
+CAM
+ve
+SHAP
+görünür
+WP3.3
+1
+haf
+ta
+WP
+3.5
+Geçmiş &
+Raporlar
+Analiz
+geçmişi
+ve PDF
+export
+Tablo
+listeleme,
+filtreleme,
+PDF üretimi
+Geçmiş
+sayfası
++ export
+PDF
+indirileb
+ilir
+WP3.3
+1
+haf
+ta
+WP
+3.6
+Kullanıcı
+Yönetimi
+Login,
+profil,
+ayarlar
+Auth akışı,
+profil
+düzenleme
+Kullanı
+cı
+sayfalar
+ı
+Giriş/çı
+kış
+çalışır
+WP3.1,
+WP2.4
+1
+haf
+ta
+WP
+3.7
+Responsi
+ve &
+A11y
+Mobil
+uyum ve
+erişilebili
+rlik
+Mobile-first
+CSS, ARIA
+labels,
+contrast
+Test
+raporu
+WCAG
+2.1 AA
+uyumlu
+WP3.2-
+3.6
+1
+haf
+ta
+WP
+3.8
+E2E Test
+& QA
+Uçtan uca
+test
+otomasyo
+nu
+Playwright/C
+ypress, test
+senaryoları
+Test
+suite +
+raporlar
+%80
+coverag
+e
+WP3.7
+1
+haf
+ta
+Şekil 27. UX Şema 2 (Sonuçlar)
+
+Şekil 28. UX Şema 3 (XAI Görüntüleme/Raporlama)
+Faz 4: Deployment ve Operasyon (Planlı)
+Faz 4; sistemin üretim ortamına taşınması ve operasyonel olgunluğunun
+artırılması için planlanan çalışmaları kapsar. Bu fazda konteynerizasyon (Docker),
+ölçeklenebilir dağıtım (Kubernetes), izleme (monitoring), CI/CD süreçleri ve güvenlik
+denetimi tamamlanacaktır. Faz 4 iş paketleri Tablo 13’te sunulmuştur.
+Tablo 13 Faz 4 Deployment ve Operasyon........................................................................................................
+WP
+ID
+İş
+Paketi
+Adı
+Amaç Alt İşler Çıktılar Kriteri Kabul Bağımlılık Süre
+WP
+4.1
+Docker
+Compo
+se
+Tüm
+servislerin
+konteyneriza
+syonu
+Python,
+Java, DB,
+Redis
+containe
+r'ları
+docker-
+compose
+.yml
+Tek
+komut
+la
+ayağa
+kalkar
+Faz 2-3
+1
+haf
+ta
+WP
+4.2
+Kubern
+etes
+Manifes
+ts
+Ölçeklenebili
+r
+deployment
+Deploym
+ent,
+Service,
+Ingress
+YAML'lar
+ı
+K8s
+manifest'
+leri
+K8s
+cluster
+'da
+çalışır
+WP4.1
+1
+haf
+ta
+WP
+4.3
+Monito
+ring
+Stack
+Sistem
+izleme
+altyapısı
+Prometh
+eus,
+Grafana,
+alerting
+Dashboa
+rd + alert
+kuralları
+Metrik
+ler
+görün
+ür
+WP4.2
+1
+haf
+ta
+WP
+4.4
+CI/CD
+Pipeline
+Otomatik
+build ve
+deploy
+GitHub
+Actions,
+staging/
+prod
+ortamları
+Pipeline
+YAML'ları
+Push't
+a
+otoma
+tik
+deploy
+WP4.2
+1
+haf
+ta
+WP
+4.5
+Güvenli
+k Audit
+Penetrasyon
+testi ve
+güvenlik
+OWASP
+kontrolle
+ri,
+bağımlılı
+k
+taraması
+Güvenlik
+raporu
+Kritik
+açık
+yok
+WP4.4
+1
+haf
+ta
+Zamanlama Planı (24 Haftalık)
+Proje için önerilen zamanlama planı toplam 24 hafta olarak yapılandırılmıştır.
+Plan; Faz 1’in 1–8. haftalarda tamamlandığını, Faz 2’nin 9–15. haftalarda, Faz 3’ün 16–
+haftalarda, Faz 4’ün ise 22–24. haftalarda yürütüleceğini göstermektedir. Haftalık
+aktif iş paketleri ve kilometre taşları Tablo 14’te sunulmuştur.
+Tablo 14 Planlama
+Hafta Faz Aktif İş Paketleri Kilometre Taşı
+1-8 Faz 1 WP1.1 → WP1.7 ✅ M1: AI Pipeline tamamlandı
+9 Faz 2 WP2.1 M2: Spring Boot altyapısı hazır
+10 Faz 2 WP2.2, WP2.3 M3: AI Gateway + DB katmanı
+11 Faz 2 WP2.4 M4: Kimlik doğrulama çalışır
+12-13 Faz 2 WP2.5 M5: RAG entegrasyonu tamamlandı
+14 Faz 2 WP2.6 M6: Workflow engine çalışır
+15 Faz 2 WP2.7 M7: Java API dokümante edildi
+16 Faz 3 WP3.1 M8: Frontend altyapısı hazır
+17 Faz 3 WP3.2, WP3.3 M9: Upload + Sonuç ekranları
+18 Faz 3 WP3.4, WP3.5 M10: XAI viewer + Geçmiş
+19 Faz 3 WP3.6 M11: Kullanıcı yönetimi
+20 Faz 3 WP3.7 M12: Responsive + A11y
+21 Faz 3 WP3.8 M13: E2E testler pass
+22 Faz 4 WP4.1, WP4.2 M14: Konteyner altyapısı
+23 Faz 4 WP4.3, WP4.4 M15: Monitoring + CI/CD
+24 Faz 4 WP4.5 M16: Güvenlik audit tamamlandı
+Gantt Şeması
+Zaman çizelgesinin görsel takibi için Gantt şeması hazırlanmıştır. Bu şema;
+fazların ardışıklığını, her iş paketinin sürelerini ve proje akışını görsel olarak
+özetlemektedir. Gantt şeması Şekil 24’te sunulmuştur.
+Şekil 29 Gantt Şeması
+
+Gantt Tablosu (Haftalık İş Paketi Dağılımı)
+Gantt şemasına ek olarak, hızlı okunabilirlik sağlamak amacıyla iş paketlerinin
+haftalara göre dağılımını gösteren görsel bir tablo hazırlanmıştır. Bu tablo, hangi iş
+paketinin hangi haftada aktif olduğunu tek bakışta göstermektedir. Haftalık dağılım
+tablosu Tablo 15 olarak sunulmuştur.
+Tablo 15 Gantt Tablosu
+İş
+Paketi
+1-
+8 9
+1
+0
+1
+1 12
+1
+3 14
+1
+5
+1
+6
+1
+7
+1
+8
+1
+9
+2
+0
+2
+1
+2
+2
+2
+3 24
+Faz 1 ██ · · · · · · · · · · · · · · · ·
+
+WP2.1 · ◼ · · · · · · · · · · · · · · ·
+
+WP2.2 · · ◼ · · · · · · · · · · · · · ·
+
+WP2.3 · · ◼ · · · · · · · · · · · · · ·
+
+WP2.4 · · · ◼ · · · · · · · · · · · · ·
+
+WP2.5 · · · · ◼ ◼ · · · · · · · · · · ·
+
+WP2.6 · · · · · · ◼ · · · · · · · · · ·
+
+WP2.7 · · · · · · · ◼ · · · · · · · · ·
+
+WP3.1 · · · · · · · · ◼ · · · · · · · ·
+
+WP3.2 · · · · · · · · · ◼ · · · · · · ·
+
+WP3.3 · · · · · · · · · ◼ · · · · · · ·
+
+WP3.4 · · · · · · · · · · ◼ · · · · · ·
+
+WP3.5 · · · · · · · · · · ◼ · · · · · ·
+
+WP3.6 · · · · · · · · · · · ◼ · · · · ·
+
+WP3.7 · · · · · · · · · · · · ◼ · · · ·
+
+WP3.8 · · · · · · · · · · · · · ◼ · · ·
+
+WP4.1 · · · · · · · · · · · · · · ◼ · ·
+
+WP4.2 · · · · · · · · · · · · · · · ◼ ·
+
+WP4.3 · · · · · · · · · · · · · · · ◼ ·
+
+WP4.4 · · · · · · · · · · · · · · · ◼ ·
+
+WP4.5 · · · · · · · · · · · · · · · · ◼
+Açıklama: ██ = Tamamlandı | ◼ = Planlı aktif çalışma | · = Pasif
+
+Bölüm Özeti
+
+Bu bölümde sunulan iş paketleri ve 24 haftalık zamanlama planı; CardioGuard-AI
+projesinin bir sonraki dönemde uygulanabilir biçimde geliştirilmesi için net teslimatlar,
+takvimlenmiş hedefler ve faz bazlı yürütme çerçevesi ortaya koymaktadır. Böylece
+tezde üretilen tasarım çıktıları, doğrudan implementasyona aktarılabilir bir proje planına
+dönüştürülmüştür.
+
+7 KAYNAKLAR
+Bu bölümde, proje hazırlanırken yararlanılan tüm kitap, makale, tez, web sitesi ve
+diğer kaynaklar liste halinde verilir. Kaynaklar belirli bir yazım kuralına (ör. IEEE,
+APA vb.) uygun biçimde düzenlenir ve metin içinde kullanılan atıflarla uyumlu
+olmalıdır. Böylece çalışmanın dayandığı bilgiler açıkça gösterilir ve akademik
+güvenilirlik sağlanır.
+
+[1] H. Wang et al., “Artificial intelligence–based accurate myocardial infarction
+mapping using 12-lead electrocardiography,” European Heart Journal - Digital Health,
+vol. 6, no. 5, pp. 939–948, Sep. 2025, doi: 10.1093/EHJDH/ZTAF077.
+[2] Z. Shi, Y. Hu, G. Mo, and J. Wu, “Attention-based CNN-LSTM and XGBoost
+hybrid model for stock prediction,” Apr. 2022, Accessed: Jan. 22, 2026. [Online].
+Available: https://arxiv.org/pdf/2204.02623
+[3] P. Wagner et al., “PTB-XL, a large publicly available electrocardiography
+dataset,” Scientific Data 2020 7:1, vol. 7, no. 1, pp. 154-, May 2020, doi:
+10.1038/s41597-020-0495-6.
+
+[4] N. Strodthoff, P. Wagner, T. Schaeffter, and W. Samek, “Deep Learning for ECG
+Analysis: Benchmarks and Insights from PTB-XL,” IEEE J. Biomed. Health Inform.,
+vol. 25, no. 5, pp. 1519–1528, May 2021, doi: 10.1109/JBHI.2020.3022989.
+[5] A. E. M. Atwa, E. S. Atlam, A. Ahmed, M. A. Atwa, E. M. Abdelrahim, and A. I.
+Siam, “Interpretable Deep Learning Models for Arrhythmia Classification Based on
+ECG Signals Using PTB-X Dataset,” Diagnostics 2025, Vol. 15, vol. 15, no. 15, Aug.
+2025, doi: 10.3390/DIAGNOSTICS15151950.
+[6] N. Jourdan, S. Sen SINTEF, E. Johannes Husom SINTEF, E. Garcia-Ceja
+SINTEF, T. Biegel, and J. Metternich, “On The Reliability Of Machine Learning
+Applications In Manufacturing Environments,” Dec. 2021, Accessed: Jan. 22, 2026.
+[Online]. Available: https://arxiv.org/pdf/2112.06986
+[7] M. Elhaddad and S. Hamam, “AI-Driven Clinical Decision Support Systems: An
+Ongoing Pursuit of Potential,” Cureus, vol. 16, no. 4, p. e57728, Apr. 2024, doi:
+10.7759/CUREUS.57728.
+[8] N. A. Ali Abdu and K. O. Basulaim, “Machine learning in concept drift detection
+using statistical measures,” International Journal of Computers and Applications, vol.
+46, no. 5, pp. 281–291, May 2024, doi:
+10.1080/1206212X.2023.2289706;WEBSITE:WEBSITE:TFOPB;PAGEGROUP:STRI

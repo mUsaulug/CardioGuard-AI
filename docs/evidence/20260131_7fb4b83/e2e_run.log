@@ -1,0 +1,73 @@
+=== E2E RUN LOG ===
+Date: 2026-01-31T05:45:00+03:00
+Tester: Automated Test Runner
+
+=== BACKEND DOĞRULAMA ===
+
+1. Health Endpoint Kontrolü
+   - Endpoint: GET /health
+   - Sonuç: BAŞARILI
+   - Response: status=healthy, timestamp mevcut
+
+2. Ready Endpoint Kontrolü
+   - Endpoint: GET /ready
+   - Sonuç: BAŞARILI
+   - Response: ready=true, tüm modeller yüklü (superclass, localization, xgb, thresholds)
+
+3. Predict Endpoint Kontrolü (explain=false)
+   - Endpoint: POST /predict/superclass
+   - Test Dosyası: sample.npy
+   - Sonuç: BAŞARILI (HTTP 200)
+   - Tahmin: MI tespit edildi (olasılık: 0.748)
+   - Primary Label: MI
+   - Consistency Guard: AGREE_MI (triage: HIGH)
+
+4. Predict Endpoint Kontrolü (explain=true)
+   - Endpoint: POST /predict/superclass
+   - Test Dosyası: sample.npy
+   - Sonuç: BAŞARILI (HTTP 200)
+   - XAI alanı: null (XAI sunucu tarafında işlenmiyor, ayrı çalıştırma gerekli)
+   - Consistency Guard: Çalışıyor
+
+=== FRONTEND DOĞRULAMA ===
+
+5. Frontend Başlatma
+   - Komut: npm run dev
+   - Sonuç: BAŞARILI
+   - Vite v6.4.1 başladı
+   - Port: 3000
+   - URL: http://localhost:3000
+
+6. UI Gözlemleri
+   - NOT: Browser tool Playwright kurulum sorunu nedeniyle çalışmıyor
+   - Ekran görüntüleri MANUEL OLARAK ALINMALIDIR
+   - Önerilen Adımlar:
+     a) Tarayıcıda http://localhost:3000 aç
+     b) Ana sayfa ekran görüntüsü al
+     c) Dosya yükle (sample.npy veya test_samples/sample_001_mi.npz)
+     d) "Analiz Et" butonuna tıkla
+     e) Sonuç sayfası ekran görüntüsü al
+     f) XAI bölümüne geç ve ekran görüntüsü al
+
+=== TEST SONUÇLARI ===
+
+7. Pytest Sonuçları
+   - Toplam Test: 105
+   - Geçen: 102
+   - Başarısız: 1 (Tcl/Tk ortam sorunu - test_plot_ecg_with_prediction)
+   - Atlanan: 2 (SHAP görselleştirme testleri)
+   - Süre: 16.36 saniye
+
+   Kritik Testler:
+   - test_consistency_guard.py: 12 test BAŞARILI
+   - test_consistency_integration.py: 4 test BAŞARILI
+   - test_checkpoint_validation.py: 12 test BAŞARILI
+   - test_airesult_mapper.py: 24 test BAŞARILI
+
+=== SONUÇ ===
+
+- Backend: TAM FONKSİYONEL
+- Frontend: ÇALIŞIYOR (manuel test gerekli)
+- API: TÜM ENDPOINT'LER ÇALIŞIYOR
+- Consistency Guard: ENTEGRE VE ÇALIŞIYOR
+- Testler: %97 BAŞARILI (102/105)

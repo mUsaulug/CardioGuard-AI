@@ -1,0 +1,192 @@
+"""Train and evaluate an XGBoost classifier on saved CNN features.
+
+Note: XGBoost requires labels to be present in the saved .npz features.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import random
+from pathlib import Path
+from typing import Dict, Tuple
+
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+import joblib
+
+from src.models.xgb import (
+    XGBConfig,
+    calibrate_xgb,
+    compute_binary_metrics,
+    compute_multiclass_metrics,
+    find_best_threshold,
+    predict_xgb,
+    save_xgb,
+    train_xgb,
+)
+
+
+def load_features(path: str | Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+    """Load features, labels, and optional ids from a .npz file."""
+
+    data = np.load(path)
+    if "X" in data:
+        features = data["X"]
+    elif "features" in data:
+        features = data["features"]
+    else:
+        raise ValueError(f"Missing features in file: {path}. Expected 'X' or 'features'.")
+
+    if "y" in data:
+        labels = data["y"]
+    elif "labels" in data:
+        labels = data["labels"]
+    else:
+        raise ValueError(
+            f"Missing labels in features file: {path}. "
+            "XGBoost training requires labels in the .npz archive."
+        )
+    labels = np.asarray(labels).reshape(-1)
+    if labels.size == 0:
+        raise ValueError(
+            f"Empty labels in features file: {path}. "
+            "XGBoost training requires non-empty labels."
+        )
+    ids = data["ids"] if "ids" in data else None
+    return features, labels, ids
+
+
+def set_random_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+
+
+def evaluate_split(
+    name: str,
+    model,
+    features: np.ndarray,
+    labels: np.ndarray,
+    threshold: float,
+) -> Dict[str, object]:
+    proba, _ = predict_xgb(model, features)
+    if proba.ndim > 1:
+        metrics = compute_multiclass_metrics(labels, proba)
+    else:
+        metrics = compute_binary_metrics(labels, proba, threshold=threshold)
+    return {"split": name, "metrics": metrics}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Train XGBoost on CNN embeddings")
+    parser.add_argument("--train", required=True, help="Path to train .npz features")
+    parser.add_argument("--val", required=True, help="Path to val .npz features")
+    parser.add_argument("--test", required=True, help="Path to test .npz features")
+    parser.add_argument("--output-dir", default="logs/xgb", help="Directory for metrics.json")
+    parser.add_argument(
+        "--no-scale-features",
+        action="store_true",
+        help="Disable StandardScaler normalization for CNN embeddings.",
+    )
+    parser.add_argument(
+        "--calibration",
+        choices=["sigmoid", "isotonic"],
+        default=None,
+        help="Optional probability calibration method (uses validation set).",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    args = parser.parse_args()
+
+    set_random_seed(args.seed)
+    X_train, y_train, _ = load_features(args.train)
+    X_val, y_val, _ = load_features(args.val)
+    X_test, y_test, _ = load_features(args.test)
+
+    scaler = None
+    if not args.no_scale_features:
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_val = scaler.transform(X_val)
+        X_test = scaler.transform(X_test)
+
+    config = XGBConfig(random_state=args.seed)
+    model, val_metrics = train_xgb(X_train, y_train, X_val, y_val, config)
+    calibrated_model = None
+    model_for_eval = model
+    if args.calibration is not None:
+        calibrated_model = calibrate_xgb(model, X_val, y_val, method=args.calibration)
+        model_for_eval = calibrated_model
+
+    val_proba, _ = predict_xgb(model_for_eval, X_val)
+    is_multiclass = val_proba.ndim > 1
+    if is_multiclass:
+        best_threshold = None
+        best_threshold_f1 = None
+    else:
+        best_threshold, best_threshold_f1 = find_best_threshold(y_val, val_proba)
+
+    results = {
+        "task": "multiclass" if is_multiclass else "binary",
+        "val": {
+            **val_metrics,
+            "best_threshold": best_threshold,
+            "best_threshold_f1": best_threshold_f1,
+            "calibration_method": args.calibration,
+            "threshold_strategy": "argmax" if is_multiclass else "binary_f1",
+        },
+        "train": evaluate_split(
+            "train",
+            model_for_eval,
+            X_train,
+            y_train,
+            threshold=best_threshold or 0.5,
+        )["metrics"],
+        "test": evaluate_split(
+            "test",
+            model_for_eval,
+            X_test,
+            y_test,
+            threshold=best_threshold or 0.5,
+        )["metrics"],
+    }
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "metrics.json"
+    with output_path.open("w", encoding="utf-8") as handle:
+        json.dump(results, handle, indent=2)
+
+    model_path = output_dir / "xgb_model.json"
+    save_xgb(model, model_path)
+    if calibrated_model is not None:
+        calibrated_path = output_dir / "xgb_calibrated.joblib"
+        joblib.dump(calibrated_model, calibrated_path)
+        print(f"Saved calibrated XGBoost model to: {calibrated_path}")
+    if scaler is not None:
+        scaler_path = output_dir / "xgb_scaler.joblib"
+        joblib.dump(scaler, scaler_path)
+        print(f"Saved XGBoost scaler to: {scaler_path}")
+
+    config_path = output_dir / "xgb_config.json"
+    with config_path.open("w", encoding="utf-8") as handle:
+        json.dump(
+            {
+                "train_path": str(args.train),
+                "val_path": str(args.val),
+                "test_path": str(args.test),
+                "scaling": not args.no_scale_features,
+                "calibration": args.calibration,
+                "random_seed": args.seed,
+                "xgb_config": config.__dict__,
+            },
+            handle,
+            indent=2,
+        )
+    print(f"Saved XGBoost config to: {config_path}")
+
+    print(json.dumps(results, indent=2))
+    print(f"Saved XGBoost model to: {model_path}")
+
+
+if __name__ == "__main__":
+    main()
