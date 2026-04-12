@@ -1,47 +1,45 @@
 {
-  "_comment": "thresholds: API inference için default değerler. details: threshold optimization geçmişi (referans için, inference'da kullanılmaz).",
-  "_note_MI": "MI için details.MI.threshold (0.01) high-recall optimization sonucu. Production'da thresholds.MI (0.5) veya consistency_guard değerleri kullanılır.",
   "thresholds": {
-    "MI": 0.5,
-    "STTC": 0.5,
-    "CD": 0.5,
-    "HYP": 0.5
+    "MI": 0.16,
+    "STTC": 0.25599,
+    "CD": 0.275734,
+    "HYP": 0.189624
   },
   "details": {
     "MI": {
-      "threshold": 0.01,
-      "method": "F_beta (beta=2.0) + recall_min=0.9",
-      "score": 0.7827630729502905,
-      "f1_at_threshold": 0.4192546583850932,
-      "recall_at_threshold": 1.0,
+      "threshold": 0.16,
+      "method": "F_beta (beta=2.0)",
+      "score": 0.786095,
+      "f1_at_threshold": 0.638271,
+      "recall_at_threshold": 0.92963,
       "support": 540
     },
     "STTC": {
-      "threshold": 0.41844362020492554,
+      "threshold": 0.25599,
       "method": "Youden_J",
-      "score": 0.721851949036415,
-      "f1_at_threshold": 0.7274155538098979,
-      "recall_at_threshold": 0.8990291262135922,
+      "score": 0.716808,
+      "f1_at_threshold": 0.727707,
+      "recall_at_threshold": 0.887379,
       "support": 515
     },
     "CD": {
-      "threshold": 0.4200475513935089,
+      "threshold": 0.275734,
       "method": "Youden_J",
-      "score": 0.6783565050000541,
-      "f1_at_threshold": 0.7245841035120147,
-      "recall_at_threshold": 0.795131845841785,
+      "score": 0.682071,
+      "f1_at_threshold": 0.725436,
+      "recall_at_threshold": 0.801217,
       "support": 493
     },
     "HYP": {
-      "threshold": 0.25846925377845764,
+      "threshold": 0.189624,
       "method": "Youden_J",
-      "score": 0.6482077062386811,
-      "f1_at_threshold": 0.487360970677452,
-      "recall_at_threshold": 0.8992537313432836,
+      "score": 0.660822,
+      "f1_at_threshold": 0.53349,
+      "recall_at_threshold": 0.847015,
       "support": 268
     }
   },
-  "ensemble_weight": 0.5,
+  "ensemble_weight": 0.15,
   "mi_beta": 2.0,
   "class_order": [
     "MI",
