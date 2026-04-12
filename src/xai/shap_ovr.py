@@ -23,10 +23,33 @@ except ImportError:
     SHAP_AVAILABLE = False
 
 from xgboost import XGBClassifier
+import json as _json
 
 
 # Class order for OVR models
 PATHOLOGY_CLASSES = ["MI", "STTC", "CD", "HYP"]
+
+
+def _patch_xgb_base_score(model: XGBClassifier) -> None:
+    """
+    Fix XGBoost 2.1+ base_score format for SHAP compatibility.
+
+    XGBoost 2.1+ writes base_score as '[5E-1]' (string array),
+    but SHAP expects a plain float like '0.5'. This patches the
+    booster config in-place before passing to SHAP TreeExplainer.
+    """
+    try:
+        booster = model.get_booster()
+        config = _json.loads(booster.save_config())
+        lmp = config.get("learner", {}).get("learner_model_param", {})
+        bs = lmp.get("base_score", "")
+        if isinstance(bs, str) and bs.startswith("["):
+            # Parse '[5E-1]' -> 0.5
+            cleaned = bs.strip("[]")
+            lmp["base_score"] = str(float(cleaned))
+            booster.load_config(_json.dumps(config))
+    except Exception:
+        pass  # If patching fails, let SHAP try anyway
 
 
 def explain_single_model(
@@ -57,7 +80,8 @@ def explain_single_model(
     else:
         X_sample = X
     
-    # Create explainer
+    # Create explainer (patch base_score for XGBoost 2.1+ compatibility)
+    _patch_xgb_base_score(model)
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_sample)
     
@@ -178,11 +202,11 @@ def explain_single_sample(
             continue
 
         model = models[cls]
+        _patch_xgb_base_score(model)
         try:
             explainer = shap.TreeExplainer(model)
             shap_values = explainer.shap_values(X_single)
         except (ValueError, TypeError) as e:
-            # Known SHAP + XGBoost version incompatibility (base_score parsing)
             print(f"Warning: SHAP failed for {cls}: {e}")
             continue
 

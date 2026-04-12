@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import subprocess
 import numpy as np
@@ -92,7 +92,7 @@ class XAIReporter:
         self.cards_file = open(self.base_dir / "cards.jsonl", "w", encoding="utf-8")
         
         # Track statistics
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
     
     def _create_directories(self) -> None:
         """Create output directory structure."""
@@ -160,7 +160,7 @@ class XAIReporter:
                 "run_id": self.run_id,
                 "sample_id": sample_id,
                 "task": self.task,
-                "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                "timestamp_utc": datetime.now(timezone.utc).isoformat() + "Z",
                 "model_id": self.model_id,
                 "xgb_id": self.xgb_id
             },
@@ -286,7 +286,7 @@ class XAIReporter:
     
     def _create_manifest(self, summary_file: Optional[str] = None) -> Dict[str, Any]:
         """Create run manifest."""
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         
         # Compute statistics
         n_samples = len(self.samples)

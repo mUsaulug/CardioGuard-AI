@@ -69,7 +69,7 @@ def get_primary_label(probs: Dict[str, float], thresholds: Dict[str, float]) -> 
 
 def load_cnn_model(checkpoint_path: Path, device: torch.device) -> MultiLabelECGCNN:
     """Load trained multi-label CNN."""
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     
     config = ECGCNNConfig()
     model = MultiLabelECGCNN(config)
@@ -85,8 +85,8 @@ def load_localization_model(checkpoint_path: Path, device: torch.device) -> nn.M
     if not checkpoint_path.exists():
         return None
         
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+
     # Config must match training (64 filters, 0.5 dropout)
     config = ECGCNNConfig(num_filters=64, dropout=0.5)
     model = ECGCNN(config, num_classes=len(MI_LOCALIZATION_REGIONS))
@@ -327,7 +327,7 @@ def predict(
         # 1. Grad-CAM (Visual)
         # Target layer: usually the last conv block of the backbone
         # We need to access it dynamically. For ECGBackbone, it's typically 'blocks'[-1]
-        target_layer = cnn_model.backbone.features[-3] 
+        target_layer = cnn_model.backbone.features[4]
         gradcam_res = generate_relevant_gradcam(
             cnn_model, target_layer, signal_tensor, cnn_probs_dict, thresholds, top_k=2
         )
@@ -376,7 +376,7 @@ def predict(
             def explanation_func(m, inp):
                 # Simple Grad-CAM generation for sanity check
                 from src.xai.gradcam import GradCAM
-                gcam = GradCAM(m, m.backbone.features[-3])
+                gcam = GradCAM(m, m.backbone.features[4])
                 return gcam.generate(inp, class_index=class_idx)
                 
             checker = XAISanityChecker(cnn_model)
@@ -476,8 +476,8 @@ def _write_manifest(
     This is the ONLY place where manifest is written.
     Backend reads this file and serves artifacts.
     """
-    from datetime import datetime
-    
+    from datetime import datetime, timezone
+
     # Ensure directories exist
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "visuals").mkdir(exist_ok=True)
@@ -510,7 +510,7 @@ def _write_manifest(
     # Build manifest
     manifest = {
         "run_id": run_dir.name,
-        "created_at": datetime.utcnow().isoformat() + "Z",
+        "created_at": datetime.now(timezone.utc).isoformat() + "Z",
         "task": "multiclass",
         "sample_id": sample_id,
         "artifacts": artifacts,

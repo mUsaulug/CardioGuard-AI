@@ -14,15 +14,15 @@ export default function SanityBadge({ sanity }: SanityBadgeProps) {
 
   const config: Record<string, { label: string; className: string }> = {
     RELIABLE: {
-      label: "GUVENILIR",
+      label: "GÜVENİLİR",
       className: "bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/30",
     },
     ACCEPTABLE: {
-      label: "KABUL EDILEBILIR",
+      label: "KABUL EDİLEBİLİR",
       className: "bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/30",
     },
     UNRELIABLE: {
-      label: "GUVENILMEZ",
+      label: "GÜVENİLMEZ",
       className: "bg-red-500/20 text-red-500 dark:text-red-400 border-red-500/30",
     },
   };

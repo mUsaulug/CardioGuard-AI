@@ -26,7 +26,7 @@ export default function LocalizationPanel({ result }: LocalizationPanelProps) {
       <div className="p-4 space-y-4">
         <div>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold block mb-2">
-            Etkilenen Bolgeler
+            Etkilenen Bölgeler
           </span>
           <div className="flex flex-wrap gap-1">
             {result.regions.map((r) => (
@@ -39,7 +39,7 @@ export default function LocalizationPanel({ result }: LocalizationPanelProps) {
             ))}
             {result.regions.length === 0 && (
               <span className="text-slate-400 dark:text-slate-500 text-xs italic">
-                Belirli bir bolge tespit edilmedi
+                Belirli bir bölge tespit edilmedi
               </span>
             )}
           </div>
@@ -47,7 +47,7 @@ export default function LocalizationPanel({ result }: LocalizationPanelProps) {
 
         <div className="space-y-3">
           <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold block">
-            Bolge Olasiliklarl
+            Bölge Olasılıkları
           </span>
           {(Object.entries(result.probabilities) as [string, number][]).map(
             ([region, prob]) => {

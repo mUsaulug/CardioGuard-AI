@@ -34,7 +34,7 @@ export default function ProbabilityChart({
   return (
     <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
-        Sinif Olasiliklarl (%)
+        Sınıf Olasılıkları (%)
       </h3>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20 }}>
@@ -47,7 +47,7 @@ export default function ProbabilityChart({
             width={50}
           />
           <Tooltip
-            formatter={(value: number) => [`${value}%`, "Olasilik"]}
+            formatter={(value: number) => [`${value}%`, "Olasılık"]}
             contentStyle={{
               backgroundColor: "#1e293b",
               border: "1px solid #334155",
@@ -78,15 +78,15 @@ export default function ProbabilityChart({
       <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1">
           <span className="w-3 h-2 bg-blue-500 rounded-sm inline-block" />
-          Esik Ustu
+          Eşik Üstü
         </div>
         <div className="flex items-center gap-1">
           <span className="w-3 h-2 bg-slate-500 rounded-sm inline-block" />
-          Esik Alti
+          Eşik Altı
         </div>
         <div className="flex items-center gap-1">
           <span className="w-3 h-0.5 bg-red-500 inline-block" />
-          Esik Degeri
+          Eşik Değeri
         </div>
       </div>
     </div>

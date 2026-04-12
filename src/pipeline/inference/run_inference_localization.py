@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import torch
@@ -129,7 +129,7 @@ def _generate_xai(
         target_layer = None
         if hasattr(model, 'backbone') and hasattr(model.backbone, 'features'):
             features = model.backbone.features
-            target_layer = features[-3] if len(features) > 3 else features[0]
+            target_layer = features[4] if len(features) > 4 else features[0]
         
         if target_layer is not None:
             # Get dominant class
@@ -224,7 +224,7 @@ def _write_manifest(
     # Build manifest
     manifest = {
         "run_id": run_dir.name,
-        "created_at": datetime.utcnow().isoformat() + "Z",
+        "created_at": datetime.now(timezone.utc).isoformat() + "Z",
         "task": "localization",
         "sample_id": sample_id,
         "artifacts": artifacts,

@@ -31,7 +31,7 @@ export default function UploadPanel({
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       if (selectedFile.size > 10 * 1024 * 1024) {
-        setFileError("Dosya boyutu 10MB limitini asiyor.");
+        setFileError("Dosya boyutu 10MB limitini aşıyor.");
         e.target.value = "";
         setFile(null);
         return;
@@ -79,7 +79,7 @@ export default function UploadPanel({
       onSuperclassResult(superRes);
       onLocalizationResult(locRes);
     } catch (err: any) {
-      onError(err.message);
+      onError(err?.message || String(err) || 'Bilinmeyen hata');
     } finally {
       setLoading(false);
       onLoadingChange(false);
@@ -93,14 +93,14 @@ export default function UploadPanel({
           EKG Analizi
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Dosya yukleyerek tahmin baslatin
+          Dosya yükleyerek tahmin başlatın
         </p>
       </div>
 
       <div className="p-4 space-y-4">
         <div>
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            EKG Dosyasi Yukle
+            EKG Dosyası Yükle
           </label>
           <input
             type="file"
@@ -120,7 +120,7 @@ export default function UploadPanel({
         <div>
           <div className="flex justify-between items-center mb-1">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Ensemble Agirligi
+              Ensemble Ağırlığı
             </label>
             <span className="text-xs font-mono bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">
               {ensembleWeight}
@@ -152,7 +152,7 @@ export default function UploadPanel({
               disabled={disabled}
               className="rounded text-blue-500 focus:ring-blue-500"
             />
-            <span className="font-medium">XAI Aciklama</span>
+            <span className="font-medium">XAI Açıklama</span>
           </label>
           <label className="flex items-center space-x-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
             <input
@@ -163,7 +163,7 @@ export default function UploadPanel({
               className="rounded text-blue-500 focus:ring-blue-500 disabled:text-slate-400"
             />
             <span className={!explain ? "text-slate-400 dark:text-slate-600" : "font-medium"}>
-              Kalite Kontrolu
+              Kalite Kontrolü
             </span>
           </label>
         </div>

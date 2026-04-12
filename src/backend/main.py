@@ -29,9 +29,10 @@ import re
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -272,10 +273,40 @@ state = AppState()
 # FastAPI App
 # =============================================================================
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load models on startup (fail-closed)."""
+    from src.utils.checkpoint_validation import (
+        validate_all_checkpoints,
+        CheckpointMismatchError,
+        MappingDriftError,
+    )
+
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("Validating checkpoints...")
+    try:
+        results = validate_all_checkpoints(strict=True)
+        print("Checkpoint validation passed!")
+        for task, result in (results or {}).items():
+            if isinstance(result, dict) and result.get("valid"):
+                print(f"  {task}: out_dim={result.get('out_dim')} ✓")
+    except (CheckpointMismatchError, MappingDriftError) as e:
+        raise RuntimeError(f"CRITICAL: Checkpoint validation failed: {e}")
+    except FileNotFoundError as e:
+        print(f"Warning: Some checkpoints missing: {e}")
+
+    print("Loading models...")
+    state.load_models()
+    print("Models loaded successfully!")
+
+    yield  # App runs here
+
 app = FastAPI(
     title="CardioGuard-AI",
     description="Multi-label ECG Classification API",
     version="1.1.0",
+    lifespan=lifespan,
 )
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
@@ -287,36 +318,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Load models on startup (fail-closed)."""
-    from src.utils.checkpoint_validation import (
-        validate_all_checkpoints,
-        CheckpointMismatchError,
-        MappingDriftError,
-    )
-    
-    RUNS_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Fail-closed checkpoint validation
-    print("Validating checkpoints...")
-    try:
-        results = validate_all_checkpoints(strict=True)
-        print("Checkpoint validation passed!")
-        for task, result in results.items():
-            if isinstance(result, dict) and result.get("valid"):
-                print(f"  {task}: out_dim={result.get('out_dim')} ✓")
-    except (CheckpointMismatchError, MappingDriftError) as e:
-        raise RuntimeError(f"CRITICAL: Checkpoint validation failed: {e}")
-    except FileNotFoundError as e:
-        print(f"Warning: Some checkpoints missing: {e}")
-    
-    # Load models (fail-closed)
-    print("Loading models...")
-    state.load_models()  # Raises RuntimeError if required files missing
-    print("Models loaded successfully!")
 
 
 # =============================================================================
@@ -410,7 +411,7 @@ async def health_check():
     """Health check endpoint."""
     return HealthResponse(
         status="healthy",
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
 
@@ -572,7 +573,7 @@ async def predict_superclass(
         versions=VersionInfo(
             model_hash=state.model_hashes.get("superclass", ""),
             threshold_hash=state.threshold_hash,
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
         ),
         xai=xai_info,
         consistency=ConsistencyInfo(**result["consistency"]) if result.get("consistency") else None,

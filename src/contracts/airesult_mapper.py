@@ -10,7 +10,7 @@ Version: 1.0.0
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 import uuid
@@ -360,7 +360,7 @@ def map_predict_output_to_airesult(
             "case_id": case_id,
             "request_id": request_id,
             "sample_id": sample_id,
-            "created_at": datetime.utcnow().isoformat() + "Z"
+            "created_at": datetime.now(timezone.utc).isoformat() + "Z"
         },
         "mode": predict_out.get("mode", "multilabel-superclass"),
         "input": input_meta,

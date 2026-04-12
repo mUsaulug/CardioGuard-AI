@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { XaiSchema, Artifact } from "../lib/types";
-import { cleanUrl, fetchTextArtifact } from "../lib/api";
+import { cleanUrl } from "../lib/api";
 import SanityBadge from "./SanityBadge";
 
 interface ArtifactRendererProps {
@@ -21,13 +21,23 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ artifact, baseUrl }
     artifact.url.endsWith(".md");
 
   useEffect(() => {
+    const controller = new AbortController();
     if (isText) {
       setLoading(true);
-      fetchTextArtifact(baseUrl, artifact.url)
+      fetch(cleanUrl(baseUrl, artifact.url), { signal: controller.signal })
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch");
+          return res.text();
+        })
         .then(setContent)
-        .catch((err) => setContent(`Yukleme hatasi: ${err.message}`))
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            setContent(`Yükleme hatası: ${err.message}`);
+          }
+        })
         .finally(() => setLoading(false));
     }
+    return () => controller.abort();
   }, [baseUrl, artifact.url, artifact.mime]);
 
   if (isImage) {
@@ -56,7 +66,7 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ artifact, baseUrl }
     );
   }
 
-  return <p className="text-sm text-slate-400 p-4 italic">Icerik yuklenemedi.</p>;
+  return <p className="text-sm text-slate-400 p-4 italic">İçerik yüklenemedi.</p>;
 };
 
 type TabKey = "gradcam" | "shap" | "report";
@@ -97,7 +107,7 @@ export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
   const categorized = categorize(artifacts);
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: "gradcam", label: "GradCAM Haritasi", count: categorized.gradcam.length },
+    { key: "gradcam", label: "GradCAM Haritası", count: categorized.gradcam.length },
     { key: "shap", label: "SHAP Analizi", count: categorized.shap.length },
     { key: "report", label: "Klinik Rapor", count: categorized.report.length },
   ];
@@ -109,11 +119,11 @@ export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
       <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            Aciklanabilir Yapay Zeka (XAI)
+            Açıklanabilir Yapay Zeka (XAI)
           </h2>
           {run_id && (
             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-              Calistirma: {run_id.substring(0, 8)}...
+              Çalıştırma: {run_id.substring(0, 8)}...
             </span>
           )}
         </div>
@@ -146,12 +156,12 @@ export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
       <div className="p-4 space-y-4 max-h-[600px] overflow-auto">
         {currentArtifacts.length === 0 ? (
           <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-8">
-            Bu kategoride artefakt bulunamadi.
+            Bu kategoride artefakt bulunamadı.
           </p>
         ) : (
           currentArtifacts.map((artifact, idx) => (
             <div
-              key={idx}
+              key={artifact.url || idx}
               className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden"
             >
               <div className="bg-slate-100 dark:bg-slate-900 px-4 py-2 text-xs font-mono text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">

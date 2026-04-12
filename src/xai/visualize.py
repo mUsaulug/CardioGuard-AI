@@ -310,8 +310,8 @@ def generate_xai_report_png(
     
     if shap_features:
         n_features = min(8, len(shap_features))
-        names = [f"Emb-{f['feature_idx']}" for f in shap_features[:n_features]]
-        values = [f.get('shap_value', f.get('abs_importance', 0)) for f in shap_features[:n_features]]
+        names = [f"Emb-{f.get('feature_idx', f.get('feature_index', f.get('feature', '?')))}" for f in shap_features[:n_features]]
+        values = [f.get('shap_value', f.get('importance', f.get('abs_importance', 0))) for f in shap_features[:n_features]]
         colors = ['#2ecc71' if v > 0 else '#e74c3c' for v in values]
         
         bars = ax_shap.barh(names, values, color=colors)

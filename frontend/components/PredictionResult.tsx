@@ -18,7 +18,7 @@ export default function PredictionResult({ result }: PredictionResultProps) {
     <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-          Birincil Tani
+          Birincil Tanı
         </h2>
       </div>
 
@@ -26,7 +26,7 @@ export default function PredictionResult({ result }: PredictionResultProps) {
         <div className="flex justify-between items-start">
           <div>
             <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase tracking-wide font-bold mb-1">
-              Tani
+              Tanı
             </span>
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">

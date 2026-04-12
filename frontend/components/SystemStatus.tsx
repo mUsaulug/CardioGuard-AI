@@ -25,7 +25,7 @@ export default function SystemStatus({ baseUrl, onReadyChange }: SystemStatusPro
       setReadyData(rRes);
       onReadyChange(rRes.ready);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message || String(err) || 'Bilinmeyen hata');
       onReadyChange(false);
       setHealth(null);
       setReadyData(null);
@@ -38,7 +38,7 @@ export default function SystemStatus({ baseUrl, onReadyChange }: SystemStatusPro
     superclass: "Superclass",
     localization: "Lokalizasyon",
     xgb: "XGBoost",
-    thresholds: "Esikler",
+    thresholds: "Eşikler",
   };
 
   return (
@@ -63,14 +63,14 @@ export default function SystemStatus({ baseUrl, onReadyChange }: SystemStatusPro
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
           )}
-          {loading ? "Kontrol Ediliyor..." : "Baglanti Kontrol Et"}
+          {loading ? "Kontrol Ediliyor..." : "Bağlantı Kontrol Et"}
         </button>
       </div>
 
       <div className="p-4 space-y-3">
         {error && (
           <div className="bg-red-500/10 text-red-500 dark:text-red-400 p-3 rounded text-sm border border-red-500/20">
-            <strong>Baglanti Hatasi:</strong> {error}
+            <strong>Bağlantı Hatası:</strong> {error}
           </div>
         )}
 
@@ -96,7 +96,7 @@ export default function SystemStatus({ baseUrl, onReadyChange }: SystemStatusPro
                     : "bg-amber-500/20 text-amber-500 dark:text-amber-400"
                 }`}
               >
-                {readyData.ready ? "Hazir" : "Hazir Degil"}
+                {readyData.ready ? "Hazır" : "Hazır Değil"}
               </span>
             </div>
 
@@ -124,7 +124,7 @@ export default function SystemStatus({ baseUrl, onReadyChange }: SystemStatusPro
 
         {!health && !readyData && !error && (
           <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-4">
-            Sistem durumunu kontrol etmek icin butona basin.
+            Sistem durumunu kontrol etmek için butona basın.
           </p>
         )}
       </div>

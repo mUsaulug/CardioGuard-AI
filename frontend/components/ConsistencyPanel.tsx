@@ -8,7 +8,7 @@ interface ConsistencyPanelProps {
 export default function ConsistencyPanel({ consistency }: ConsistencyPanelProps) {
   const agreementConfig: Record<string, { label: string; className: string }> = {
     AGREE_MI: {
-      label: "MI Onaylandi",
+      label: "MI Onaylandı",
       className: "bg-red-500/20 text-red-500 dark:text-red-400 border-red-500/30",
     },
     AGREE_NO_MI: {
@@ -16,22 +16,22 @@ export default function ConsistencyPanel({ consistency }: ConsistencyPanelProps)
       className: "bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/30",
     },
     DISAGREE: {
-      label: "Inceleme Gerekli",
+      label: "İnceleme Gerekli",
       className: "bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/30",
     },
   };
 
   const triageConfig: Record<string, { label: string; className: string }> = {
     HIGH: {
-      label: "YUKSEK",
+      label: "YÜKSEK",
       className: "bg-red-500/20 text-red-500 dark:text-red-400",
     },
     LOW: {
-      label: "DUSUK",
+      label: "DÜŞÜK",
       className: "bg-green-500/20 text-green-500 dark:text-green-400",
     },
     REVIEW: {
-      label: "INCELEME",
+      label: "İNCELEME",
       className: "bg-amber-500/20 text-amber-500 dark:text-amber-400",
     },
   };
@@ -50,7 +50,7 @@ export default function ConsistencyPanel({ consistency }: ConsistencyPanelProps)
     <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-          Tutarlilik Analizi
+          Tutarlılık Analizi
         </h2>
       </div>
 
@@ -76,7 +76,7 @@ export default function ConsistencyPanel({ consistency }: ConsistencyPanelProps)
 
         <div className="space-y-3">
           <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold block">
-            MI Olasilik Karsilastirmasi
+            MI Olasılık Karşılaştırması
           </span>
 
           <div className="space-y-2">
@@ -115,11 +115,11 @@ export default function ConsistencyPanel({ consistency }: ConsistencyPanelProps)
         {consistency.warnings.length > 0 && (
           <div className="space-y-2">
             <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold block">
-              Uyarilar
+              Uyarılar
             </span>
             {consistency.warnings.map((warning, idx) => (
               <div
-                key={idx}
+                key={`warning-${idx}-${warning.substring(0,15)}`}
                 className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 p-2 rounded border border-amber-500/20"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-shrink-0">

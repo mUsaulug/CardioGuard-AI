@@ -121,7 +121,7 @@ def load_model_safe(
     expected_dim = TASK_DIMS[expected_task]
     
     # Load checkpoint
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     msd = checkpoint.get("model_state_dict", checkpoint)
     
     # Detect schema

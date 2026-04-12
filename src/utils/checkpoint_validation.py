@@ -135,7 +135,7 @@ def validate_checkpoint_task(
     }
     
     try:
-        sd = torch.load(checkpoint_path, map_location="cpu")
+        sd = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         msd = sd.get("model_state_dict", sd)
         
         # Check for regression head misuse

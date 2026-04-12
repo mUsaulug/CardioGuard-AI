@@ -34,7 +34,7 @@ export default function Header({ baseUrl, onBaseUrlChange, systemReady }: Header
               }`}
             />
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              {systemReady ? "Aktif" : "Baglanti Yok"}
+              {systemReady ? "Aktif" : "Bağlantı Yok"}
             </span>
           </div>
         </div>
@@ -56,7 +56,7 @@ export default function Header({ baseUrl, onBaseUrlChange, systemReady }: Header
           <button
             onClick={toggleTheme}
             className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
-            title="Tema Degistir"
+            title="Tema Değiştir"
           >
             {theme === "dark" ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
