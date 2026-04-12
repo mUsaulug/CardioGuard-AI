@@ -1,12 +1,7 @@
-# ====== Stage 1: Frontend Build ======
-FROM node:18-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
-COPY frontend/ .
-RUN npm run build
+# CardioGuard-AI Docker Image
+# Frontend must be pre-built: cd frontend && npm run build
+# Then: docker-compose up --build
 
-# ====== Stage 2: Python Backend ======
 FROM python:3.10-slim
 WORKDIR /app
 
@@ -27,8 +22,8 @@ COPY logs/ logs/
 COPY artifacts/ artifacts/
 COPY sample.npy test_mi_sample.npz ./
 
-# Frontend static files from build stage
-COPY --from=frontend-builder /app/frontend/dist frontend/dist
+# Pre-built frontend
+COPY frontend/dist frontend/dist
 
 EXPOSE 8000
 
