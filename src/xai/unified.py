@@ -84,7 +84,7 @@ class UnifiedExplainer:
         feature_evidence = self._extract_feature_evidence(shap_result)
         
         # 3. Detect Conflicts or Synergy
-        coherence_score, conflict_notes = self._analyze_coherence(visual_evidence, feature_evidence)
+        coherence_score, conflict_notes = self._analyze_coherence(gradcam_result, shap_result)
         
         # 4. Generate Narrative
         narrative = self._generate_narrative(
