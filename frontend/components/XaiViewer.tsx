@@ -92,11 +92,20 @@ export default function XaiViewer({ xai, baseUrl }: XaiViewerProps) {
 
     (artifacts || []).forEach((a) => {
       const name = a.name.toLowerCase();
-      if (name.includes("gradcam") || name.includes("grad_cam")) {
+      const type = a.type.toLowerCase();
+
+      // report_png contains both GradCAM and SHAP panels - show in both tabs
+      if (type === "report_png" || name.includes("report")) {
         gradcam.push(a);
-      } else if (name.includes("shap")) {
         shap.push(a);
-      } else {
+      } else if (name.includes("gradcam") || name.includes("grad_cam") || type.includes("gradcam")) {
+        gradcam.push(a);
+      } else if (name.includes("shap") || type.includes("shap")) {
+        shap.push(a);
+      }
+
+      // narrative goes to report tab
+      if (type === "narrative_md" || name.endsWith(".md") || a.mime.includes("markdown")) {
         report.push(a);
       }
     });
