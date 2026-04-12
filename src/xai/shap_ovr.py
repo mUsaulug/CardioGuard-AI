@@ -18,38 +18,40 @@ import numpy as np
 
 try:
     import shap
+    import shap.explainers._tree as _shap_tree
+    import json as _json_shap
     SHAP_AVAILABLE = True
+
+    # Monkey-patch SHAP to handle XGBoost 2.1+ base_score format '[5E-1]'
+    _original_xgb_loader_init = _shap_tree.XGBTreeModelLoader.__init__
+
+    def _patched_xgb_loader_init(self, xgb_model):
+        try:
+            _original_xgb_loader_init(self, xgb_model)
+        except ValueError as e:
+            if "could not convert string to float" in str(e):
+                # Fix: parse '[5E-1]' -> 0.5, then retry
+                booster = xgb_model.get_booster()
+                config = _json_shap.loads(booster.save_config())
+                lmp = config.get("learner", {}).get("learner_model_param", {})
+                bs = lmp.get("base_score", "0.5")
+                if isinstance(bs, str) and bs.startswith("["):
+                    lmp["base_score"] = str(float(bs.strip("[]")))
+                    booster.load_config(_json_shap.dumps(config))
+                _original_xgb_loader_init(self, xgb_model)
+            else:
+                raise
+
+    _shap_tree.XGBTreeModelLoader.__init__ = _patched_xgb_loader_init
+
 except ImportError:
     SHAP_AVAILABLE = False
 
 from xgboost import XGBClassifier
-import json as _json
 
 
 # Class order for OVR models
 PATHOLOGY_CLASSES = ["MI", "STTC", "CD", "HYP"]
-
-
-def _patch_xgb_base_score(model: XGBClassifier) -> None:
-    """
-    Fix XGBoost 2.1+ base_score format for SHAP compatibility.
-
-    XGBoost 2.1+ writes base_score as '[5E-1]' (string array),
-    but SHAP expects a plain float like '0.5'. This patches the
-    booster config in-place before passing to SHAP TreeExplainer.
-    """
-    try:
-        booster = model.get_booster()
-        config = _json.loads(booster.save_config())
-        lmp = config.get("learner", {}).get("learner_model_param", {})
-        bs = lmp.get("base_score", "")
-        if isinstance(bs, str) and bs.startswith("["):
-            # Parse '[5E-1]' -> 0.5
-            cleaned = bs.strip("[]")
-            lmp["base_score"] = str(float(cleaned))
-            booster.load_config(_json.dumps(config))
-    except Exception:
-        pass  # If patching fails, let SHAP try anyway
 
 
 def explain_single_model(
@@ -80,8 +82,7 @@ def explain_single_model(
     else:
         X_sample = X
     
-    # Create explainer (patch base_score for XGBoost 2.1+ compatibility)
-    _patch_xgb_base_score(model)
+    # Create explainer (base_score patch applied globally via monkey-patch)
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_sample)
     
@@ -202,7 +203,6 @@ def explain_single_sample(
             continue
 
         model = models[cls]
-        _patch_xgb_base_score(model)
         try:
             explainer = shap.TreeExplainer(model)
             shap_values = explainer.shap_values(X_single)
