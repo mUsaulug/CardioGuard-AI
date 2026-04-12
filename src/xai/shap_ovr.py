@@ -18,31 +18,34 @@ import numpy as np
 
 try:
     import shap
-    import shap.explainers._tree as _shap_tree
-    import json as _json_shap
     SHAP_AVAILABLE = True
 
     # Monkey-patch SHAP to handle XGBoost 2.1+ base_score format '[5E-1]'
-    _original_xgb_loader_init = _shap_tree.XGBTreeModelLoader.__init__
+    # SHAP line: self.base_score = float(learner_model_param["base_score"])
+    # fails because XGBoost 3.x writes base_score as '[5E-1]' not '0.5'
+    _original_float = float.__class__
+    import shap.explainers._tree as _shap_tree
 
-    def _patched_xgb_loader_init(self, xgb_model):
+    _orig_init = _shap_tree.XGBTreeModelLoader.__init__
+
+    def _safe_xgb_loader_init(self, xgb_model):
+        # Temporarily patch float() to handle '[5E-1]' format
+        import builtins
+        _builtin_float = builtins.float
+
+        class _SafeFloat(_builtin_float):
+            def __new__(cls, x=0):
+                if isinstance(x, str) and x.startswith("["):
+                    x = x.strip("[]")
+                return _builtin_float.__new__(cls, x)
+
+        builtins.float = _SafeFloat
         try:
-            _original_xgb_loader_init(self, xgb_model)
-        except ValueError as e:
-            if "could not convert string to float" in str(e):
-                # Fix: parse '[5E-1]' -> 0.5, then retry
-                booster = xgb_model.get_booster()
-                config = _json_shap.loads(booster.save_config())
-                lmp = config.get("learner", {}).get("learner_model_param", {})
-                bs = lmp.get("base_score", "0.5")
-                if isinstance(bs, str) and bs.startswith("["):
-                    lmp["base_score"] = str(float(bs.strip("[]")))
-                    booster.load_config(_json_shap.dumps(config))
-                _original_xgb_loader_init(self, xgb_model)
-            else:
-                raise
+            _orig_init(self, xgb_model)
+        finally:
+            builtins.float = _builtin_float
 
-    _shap_tree.XGBTreeModelLoader.__init__ = _patched_xgb_loader_init
+    _shap_tree.XGBTreeModelLoader.__init__ = _safe_xgb_loader_init
 
 except ImportError:
     SHAP_AVAILABLE = False
