@@ -176,26 +176,31 @@ def explain_single_sample(
     for cls in relevant_classes:
         if cls not in models:
             continue
-        
+
         model = models[cls]
-        explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(X_single)
-        
+        try:
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_single)
+        except (ValueError, TypeError) as e:
+            # Known SHAP + XGBoost version incompatibility (base_score parsing)
+            print(f"Warning: SHAP failed for {cls}: {e}")
+            continue
+
         if isinstance(shap_values, list):
             shap_values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
-        
+
         results[cls] = {
             "shap_values": shap_values[0],  # Single sample
             "expected_value": float(explainer.expected_value) if np.isscalar(explainer.expected_value) else float(explainer.expected_value[1]),
             "prediction_contribution": float(shap_values[0].sum()),
         }
-        
+
         # Compute feature importance for this sample (abs SHAP)
         results[cls]["feature_importance"] = np.abs(results[cls]["shap_values"])
-        
+
         # Get top features
         results[cls]["top_features"] = get_top_features(results[cls], top_k=10)
-    
+
     return results
 
 
