@@ -15,22 +15,18 @@ from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 import uuid
 
+from src.config import (
+    SUPERCLASS_LABELS as PATHOLOGY_CLASSES,
+    MI_LOCALIZATION_LABELS,
+    MI_LOCALIZATION_FINGERPRINT as MI_LOCALIZATION_MAPPING_FINGERPRINT,
+)
+
 
 # =============================================================================
 # Constants
 # =============================================================================
 
 AIRESULT_VERSION = "1.0.0"
-
-PATHOLOGY_CLASSES = ["MI", "STTC", "CD", "HYP"]
-
-# MI Localization: DERIVED anatomical regions from PTB-XL SCP codes
-# NOT raw SCP codes - 13+ codes mapped to 5 targets via MI_CODE_TO_REGIONS
-MI_LOCALIZATION_LABELS = ["AMI", "ASMI", "ALMI", "IMI", "LMI"]
-
-# Mapping fingerprint for version tracking (sha256[:16] of sorted mapping dict)
-# Recompute if MI_CODE_TO_REGIONS changes in mi_localization.py
-MI_LOCALIZATION_MAPPING_FINGERPRINT = "8ab274e06afa1be8"
 
 LEADS = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
 

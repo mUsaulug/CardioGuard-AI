@@ -22,14 +22,11 @@ import joblib
 from sklearn.isotonic import IsotonicRegression  # Import needed for instance check
 
 from src.models.cnn import ECGCNNConfig, ECGBackbone, ECGCNN
-from src.pipeline.training.train_superclass_cnn import MultiLabelECGCNN, SUPERCLASS_LABELS
-from src.pipeline.training.train_mi_localization import MI_LOCALIZATION_REGIONS
-from src.xai.gradcam import generate_relevant_gradcam
-from src.xai.shap_ovr import explain_single_sample
-from src.xai.unified import UnifiedExplainer
-from src.xai.sanity import XAISanityChecker
-from src.xai.visualize import plot_12lead_gradcam
+from src.pipeline.training.train_superclass_cnn import MultiLabelECGCNN
+from src.data.mi_localization import MI_LOCALIZATION_REGIONS
+from src.config import SUPERCLASS_LABELS, MI_LOCALIZATION_LABELS
 from src.pipeline.inference.consistency_guard import check_consistency, ConsistencyResult
+from src.xai.pipeline import PredictResult, ExplanationResult, explain as xai_explain
 
 
 # Default paths
@@ -178,6 +175,146 @@ def ensure_channel_first(signal: np.ndarray) -> np.ndarray:
     return signal
 
 
+def core_predict(
+    signal: np.ndarray,
+    cnn_model: nn.Module,
+    xgb_data: Dict[str, Any],
+    thresholds: Dict[str, float],
+    device: torch.device,
+    localization_model: Optional[nn.Module] = None,
+    binary_model: Optional[nn.Module] = None,
+    ensemble_weight: float = 0.5,
+    localization_threshold: float = 0.5,
+) -> PredictResult:
+    """
+    Pure inference: CNN + XGB ensemble, labels, consistency guard, localization.
+
+    No XAI, plotting, or manifest writing.
+    """
+    signal = ensure_channel_first(signal)
+
+    with torch.no_grad():
+        signal_tensor = torch.as_tensor(signal, dtype=torch.float32).unsqueeze(0).to(device)
+        cnn_logits = cnn_model(signal_tensor)
+        cnn_probs = torch.sigmoid(cnn_logits).cpu().numpy()[0]
+
+    cnn_probs_dict = {cls: float(cnn_probs[i]) for i, cls in enumerate(SUPERCLASS_LABELS)}
+
+    embeddings = None
+    if xgb_data.get("models"):
+        with torch.no_grad():
+            embeddings = cnn_model.backbone(signal_tensor).cpu().numpy()
+
+    xgb_probs_dict: Dict[str, float] = {}
+    if xgb_data.get("models") and embeddings is not None:
+        xgb_embeddings = embeddings
+        if xgb_data.get("scaler") is not None:
+            xgb_embeddings = xgb_data["scaler"].transform(embeddings)
+
+        for cls in SUPERCLASS_LABELS:
+            if cls in xgb_data["models"]:
+                model = xgb_data["models"][cls]
+                raw_prob = model.predict_proba(xgb_embeddings)[0, 1]
+
+                if cls in xgb_data.get("calibrators", {}):
+                    calibrator = xgb_data["calibrators"][cls]
+                    if isinstance(calibrator, IsotonicRegression):
+                        prob = calibrator.predict([raw_prob])[0]
+                    else:
+                        prob = calibrator.predict_proba([[raw_prob]])[0, 1]
+                else:
+                    prob = raw_prob
+
+                xgb_probs_dict[cls] = float(prob)
+
+    if xgb_probs_dict:
+        w = ensemble_weight
+        ensemble_probs = {
+            cls: w * cnn_probs_dict[cls] + (1 - w) * xgb_probs_dict.get(cls, cnn_probs_dict[cls])
+            for cls in SUPERCLASS_LABELS
+        }
+    else:
+        ensemble_probs = cnn_probs_dict
+
+    predicted_labels = [
+        cls for cls in SUPERCLASS_LABELS
+        if ensemble_probs[cls] >= thresholds.get(cls, 0.5)
+    ]
+
+    primary_label, primary_confidence = get_primary_label(ensemble_probs, thresholds)
+    norm_prob = 1.0 - max(ensemble_probs.values())
+
+    consistency_result: Optional[ConsistencyResult] = None
+    if binary_model is not None:
+        try:
+            with torch.no_grad():
+                binary_logits = binary_model(signal_tensor)
+                binary_mi_prob = float(torch.sigmoid(binary_logits).cpu().numpy().flatten()[0])
+            consistency_result = check_consistency(
+                superclass_mi_prob=ensemble_probs.get("MI", 0.0),
+                binary_mi_prob=binary_mi_prob,
+                superclass_threshold=thresholds.get("MI", 0.5),
+                binary_threshold=0.5,
+            )
+        except Exception as e:
+            print(f"Warning: Consistency check failed: {e}")
+            consistency_result = None
+
+    localization_result = None
+    if localization_model and "MI" in predicted_labels:
+        with torch.no_grad():
+            loc_logits = localization_model(signal_tensor)
+            loc_probs = torch.sigmoid(loc_logits).cpu().numpy()[0]
+
+        localization_result = {
+            region: float(prob)
+            for region, prob in zip(MI_LOCALIZATION_REGIONS, loc_probs)
+        }
+        detected_regions = [
+            region for region, prob in localization_result.items()
+            if prob >= localization_threshold
+        ]
+        localization_result["predicted_regions"] = detected_regions
+
+    return PredictResult(
+        signal=signal,
+        signal_tensor=signal_tensor,
+        cnn_probs=cnn_probs_dict,
+        xgb_probs=xgb_probs_dict,
+        ensemble_probs=ensemble_probs,
+        embeddings=embeddings,
+        predicted_labels=predicted_labels,
+        primary_label=primary_label,
+        primary_confidence=primary_confidence,
+        norm_prob=norm_prob,
+        thresholds=thresholds,
+        ensemble_weight=ensemble_weight,
+        localization=localization_result,
+        consistency=consistency_result,
+    )
+
+
+def generate_explanation(
+    predict_result: PredictResult,
+    cnn_model: nn.Module,
+    xgb_data: Dict[str, Any],
+    run_dir: Optional[Path],
+    sample_id: str,
+    sanity_check: bool = False,
+    save_plot: Optional[Path] = None,
+) -> ExplanationResult:
+    """Delegate XAI coordination to the deep XAI pipeline module."""
+    return xai_explain(
+        predict_result=predict_result,
+        cnn_model=cnn_model,
+        xgb_data=xgb_data,
+        run_dir=run_dir,
+        sample_id=sample_id,
+        sanity_check=sanity_check,
+        save_plot=save_plot,
+    )
+
+
 def predict(
     signal: np.ndarray,
     cnn_model: MultiLabelECGCNN,
@@ -195,364 +332,65 @@ def predict(
     sample_id: str = "sample",
 ) -> Dict[str, Any]:
     """
-    Run multi-label prediction.
-    
-    Args:
-        signal: ECG signal (channels, timesteps)
-        cnn_model: Trained CNN model
-        xgb_data: XGBoost models, calibrators, scaler
-        thresholds: Per-class thresholds
-        device: Torch device
-        ensemble_weight: Weight for CNN (1-weight for XGB)
-        
-    Returns:
-        Prediction result dict
+    Run multi-label prediction (backward-compatible wrapper).
+
+    Composes core_predict() and optionally generate_explanation().
     """
-    # Ensure correct format
-    signal = ensure_channel_first(signal)
-    
-    # CNN prediction
-    with torch.no_grad():
-        signal_tensor = torch.as_tensor(signal, dtype=torch.float32).unsqueeze(0).to(device)
-        cnn_logits = cnn_model(signal_tensor)
-        cnn_probs = torch.sigmoid(cnn_logits).cpu().numpy()[0]
-    
-    cnn_probs_dict = {cls: float(cnn_probs[i]) for i, cls in enumerate(SUPERCLASS_LABELS)}
+    predict_result = core_predict(
+        signal=signal,
+        cnn_model=cnn_model,
+        xgb_data=xgb_data,
+        thresholds=thresholds,
+        device=device,
+        localization_model=localization_model,
+        binary_model=binary_model,
+        ensemble_weight=ensemble_weight,
+        localization_threshold=localization_threshold,
+    )
 
-    # Extract embeddings once (reused by XGBoost and SHAP)
-    embeddings = None
-    if xgb_data["models"] or explain:
-        with torch.no_grad():
-            embeddings = cnn_model.backbone(signal_tensor).cpu().numpy()
-
-    # XGBoost prediction (if available)
-    xgb_probs_dict = {}
-    if xgb_data["models"]:
-        # Scale if scaler available
-        xgb_embeddings = embeddings
-        if xgb_data["scaler"] is not None:
-            xgb_embeddings = xgb_data["scaler"].transform(embeddings)
-
-        # Predict with each OVR model
-        for cls in SUPERCLASS_LABELS:
-            if cls in xgb_data["models"]:
-                model = xgb_data["models"][cls]
-                raw_prob = model.predict_proba(xgb_embeddings)[0, 1]
-                
-                # Calibrate if calibrator available
-                if cls in xgb_data["calibrators"]:
-                    calibrator = xgb_data["calibrators"][cls]
-                    
-                    if isinstance(calibrator, IsotonicRegression):
-                        # IsotonicRegressor only has predict(), no predict_proba
-                        # And it expects 1D array
-                        prob = calibrator.predict([raw_prob])[0]
-                    else:
-                        # LogisticRegression (Platt)
-                        prob = calibrator.predict_proba([[raw_prob]])[0, 1]
-                else:
-                    prob = raw_prob
-                
-                xgb_probs_dict[cls] = float(prob)
-    
-    # Ensemble
-    if xgb_probs_dict:
-        w = ensemble_weight
-        ensemble_probs = {
-            cls: w * cnn_probs_dict[cls] + (1 - w) * xgb_probs_dict.get(cls, cnn_probs_dict[cls])
-            for cls in SUPERCLASS_LABELS
-        }
-    else:
-        ensemble_probs = cnn_probs_dict
-    
-    # Determine predicted labels (multi-label)
-    predicted_labels = [
-        cls for cls in SUPERCLASS_LABELS
-        if ensemble_probs[cls] >= thresholds.get(cls, 0.5)
-    ]
-    
-    # Determine primary label
-    primary_label, primary_confidence = get_primary_label(ensemble_probs, thresholds)
-    
-    # NORM probability (derived)
-    norm_prob = 1.0 - max(ensemble_probs.values())
-    
-    # ---------------------------------------------------------
-    # Consistency Guard (Binary MI vs Superclass MI)
-    # ---------------------------------------------------------
-    consistency_result: Optional[ConsistencyResult] = None
-    if binary_model is not None:
-        try:
-            with torch.no_grad():
-                binary_logits = binary_model(signal_tensor)
-                binary_mi_prob = float(torch.sigmoid(binary_logits).cpu().numpy().flatten()[0])
-            consistency_result = check_consistency(
-                superclass_mi_prob=ensemble_probs.get("MI", 0.0),
-                binary_mi_prob=binary_mi_prob,
-                superclass_threshold=thresholds.get("MI", 0.5),
-                binary_threshold=0.5,
-            )
-        except Exception as e:
-            print(f"Warning: Consistency check failed: {e}")
-            consistency_result = None
-
-    # ---------------------------------------------------------
-    # MI Localization (Conditional)
-    # ---------------------------------------------------------
-    localization_result = None
-    if localization_model and "MI" in predicted_labels:
-        with torch.no_grad():
-            signal_tensor = torch.as_tensor(signal, dtype=torch.float32).unsqueeze(0).to(device)
-            loc_logits = localization_model(signal_tensor)
-            loc_probs = torch.sigmoid(loc_logits).cpu().numpy()[0]
-            
-        localization_result = {
-            region: float(prob)
-            for region, prob in zip(MI_LOCALIZATION_REGIONS, loc_probs)
-        }
-        # Filter by threshold (default 0.5)
-        detected_regions = [
-            region for region, prob in localization_result.items()
-            if prob >= localization_threshold
-        ]
-        localization_result["predicted_regions"] = detected_regions
-    
-    # ---------------------------------------------------------
-    # XAI: Unified Explanation & Sanity Checks
-    # ---------------------------------------------------------
     explanation_result = None
-    sanity_result = None
-    
     if explain:
-        # 1. Grad-CAM (Visual)
-        # Target layer: usually the last conv block of the backbone
-        # We need to access it dynamically. For ECGBackbone, it's typically 'blocks'[-1]
-        target_layer = cnn_model.backbone.features[4]
-        gradcam_res = generate_relevant_gradcam(
-            cnn_model, target_layer, signal_tensor, cnn_probs_dict, thresholds, top_k=2
-        )
-        
-        # 2. SHAP (Feature)
-        # Explain relevance for classes that have high probability or primary label
-        relevant_for_shap = list(gradcam_res.keys())
-        if primary_label != "NORM" and primary_label not in relevant_for_shap:
-            relevant_for_shap.append(primary_label)
-            
-        shap_res = {}
-        if xgb_data["models"] and relevant_for_shap:
-            # We need embeddings for SHAP (1, 64)
-            # embeddings was computed above
-            shap_res = explain_single_sample(
-                xgb_data["models"], 
-                embeddings, # (1, 64)
-                relevant_classes=relevant_for_shap
-            )
-
-        # 3. Unified Synthesis
-        unifier = UnifiedExplainer()
-
-        # Get runner-up class for contrastive
-        sorted_classes = sorted(ensemble_probs.items(), key=lambda x: x[1], reverse=True)
-        runnerup_cls = sorted_classes[1][0] if len(sorted_classes) > 1 else None
-
-        explanation_result = unifier.synthesize(
-            gradcam_res,
-            shap_res,
-            ensemble_probs,
-            ensemble_weight,
-            primary_label=primary_label,
-            runnerup_label=runnerup_cls,
-        )
-        # Add raw results for external tools (like comprehensive test)
-        explanation_result["raw_gradcam"] = gradcam_res
-        explanation_result["raw_shap"] = shap_res
-        
-        # 4. Sanity Checks (Optional)
-        if sanity_check:
-            # We need a wrapper function for XAISanityChecker that matches signature (model, input) -> explanation
-            # For simplicity, we test Grad-CAM stability on the primary label
-            class_idx = SUPERCLASS_LABELS.index(primary_label) if primary_label != "NORM" else 0
-            
-            def explanation_func(m, inp):
-                # Simple Grad-CAM generation for sanity check
-                from src.xai.gradcam import GradCAM
-                gcam = GradCAM(m, m.backbone.features[4])
-                return gcam.generate(inp, class_index=class_idx)
-                
-            checker = XAISanityChecker(cnn_model)
-            sanity_result = checker.run_checks(
-                signal_tensor, 
-                gradcam_res.get(primary_label) if gradcam_res else None, 
-                explanation_func
-            )
-            explanation_result["sanity_check"] = sanity_result
-            
-        # 5. Visualization (Optional)
-        # 5. Visualization (Optional)
-        if save_plot:
-            try:
-                # UNIFIED VISUALIZATION: Use the same comprehensive report generator as Localization
-                from src.xai.visualize import generate_xai_report_png
-                
-                # 1. Prepare SHAP Features List
-                shap_features = []
-                if explanation_result and "raw_shap" in explanation_result:
-                    # Get SHAP for the primary label
-                    primary_shap = explanation_result["raw_shap"].get(primary_label, {})
-                    if isinstance(primary_shap, dict):
-                        # Convert to list format expected by visualizer
-                        for feat in primary_shap.get("top_features", []):
-                            shap_features.append({
-                                "feature_idx": feat.get("feature", "Unknown"),
-                                "shap_value": feat.get("importance", 0)
-                            })
-
-                # 2. Prepare Grad-CAM (Primary Label Only)
-                primary_gradcam = gradcam_res.get(primary_label) if gradcam_res else None
-
-                # 3. Generate Unified PNG Report
-                generate_xai_report_png(
-                    signal=signal,
-                    combined_heatmap=primary_gradcam,
-                    shap_features=shap_features,
-                    sanity_metrics=explanation_result.get("sanity_check", {}),
-                    prediction={"pred_class": primary_label, "pred_proba": primary_confidence},
-                    output_path=save_plot,
-                    sampling_rate=100
-                )
-                print(f"Explanation plot saved to {save_plot}")
-
-            except Exception as e:
-                print(f"Warning: Could not save plot: {e}")
-                import traceback
-                traceback.print_exc()
-
-    # Write manifest.json if explain=True and run_dir provided
-    if explain and run_dir:
-        sanity_res = None
-        if isinstance(explanation_result, dict):
-            sanity_res = explanation_result.get("sanity_check")
-        _write_manifest(
+        exp = generate_explanation(
+            predict_result=predict_result,
+            cnn_model=cnn_model,
+            xgb_data=xgb_data,
             run_dir=run_dir,
             sample_id=sample_id,
-            explanation_result=explanation_result,
-            sanity_result=sanity_res,
+            sanity_check=sanity_check,
+            save_plot=save_plot,
         )
-    
+        explanation_result = exp.to_explanation_dict()
+
+    ensemble_probs = predict_result.ensemble_probs
+    consistency_result = predict_result.consistency
+
     return {
         "mode": "multilabel-superclass",
         "multi": {
-            "probabilities": {**ensemble_probs, "NORM": norm_prob},
-            "predicted_labels": predicted_labels if predicted_labels else ["NORM"],
+            "probabilities": {**ensemble_probs, "NORM": predict_result.norm_prob},
+            "predicted_labels": (
+                predict_result.predicted_labels
+                if predict_result.predicted_labels
+                else ["NORM"]
+            ),
             "thresholds": thresholds,
         },
         "primary": {
-            "label": primary_label,
-            "confidence": primary_confidence,
+            "label": predict_result.primary_label,
+            "confidence": predict_result.primary_confidence,
             "rule": "MI-first-then-priority",
         },
-        "mi_localization": localization_result,
+        "mi_localization": predict_result.localization,
         "explanation": explanation_result,
         "sources": {
-            "cnn": cnn_probs_dict,
-            "xgb": xgb_probs_dict if xgb_probs_dict else None,
+            "cnn": predict_result.cnn_probs,
+            "xgb": predict_result.xgb_probs if predict_result.xgb_probs else None,
             "ensemble": ensemble_probs,
         },
         "run_id": run_dir.name if run_dir else None,
         "run_dir": str(run_dir) if run_dir else None,
         "consistency": consistency_result.to_dict() if consistency_result else None,
     }
-
-
-def _write_manifest(
-    run_dir: Path,
-    sample_id: str,
-    explanation_result: Optional[Dict[str, Any]],
-    sanity_result: Optional[Dict[str, Any]],
-) -> None:
-    """
-    Write manifest.json for XAI artifacts.
-    
-    This is the ONLY place where manifest is written.
-    Backend reads this file and serves artifacts.
-    """
-    from datetime import datetime, timezone
-
-    # Ensure directories exist
-    run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "visuals").mkdir(exist_ok=True)
-    (run_dir / "text").mkdir(exist_ok=True)
-    (run_dir / "tensors").mkdir(exist_ok=True)
-    
-    artifacts = []
-    
-    # Discover visuals that may have been created by save_plot
-    visuals_dir = run_dir / "visuals"
-    for png in visuals_dir.glob("*.png"):
-        artifacts.append({
-            "type": "report_png",
-            "path": f"visuals/{png.name}",
-            "mime": "image/png"
-        })
-    
-    # Write narrative if explanation exists
-    if explanation_result:
-        narrative = _generate_narrative(explanation_result, sample_id)
-        narrative_path = run_dir / "text" / f"{sample_id}__narrative.md"
-        with open(narrative_path, "w", encoding="utf-8") as f:
-            f.write(narrative)
-        artifacts.append({
-            "type": "narrative_md",
-            "path": f"text/{sample_id}__narrative.md",
-            "mime": "text/markdown"
-        })
-    
-    # Build manifest
-    manifest = {
-        "run_id": run_dir.name,
-        "created_at": datetime.now(timezone.utc).isoformat() + "Z",
-        "task": "multiclass",
-        "sample_id": sample_id,
-        "artifacts": artifacts,
-        "sanity": sanity_result.get("overall") if sanity_result else None,
-        "highlights": explanation_result.get("top_windows") if explanation_result else None,
-    }
-    
-    manifest_path = run_dir / "manifest.json"
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2)
-
-
-def _generate_narrative(explanation: Dict[str, Any], sample_id: str) -> str:
-    """Generate narrative markdown from explanation result."""
-    narrative = f"# XAI Explanation: {sample_id}\n\n"
-    
-    # SHAP info
-    shap_res = explanation.get("raw_shap", {})
-    if shap_res:
-        narrative += "## Top Features (SHAP)\n\n"
-        for cls, data in shap_res.items():
-            if isinstance(data, dict) and "top_features" in data:
-                narrative += f"### {cls}\n"
-                for feat in data.get("top_features", [])[:5]:
-                    narrative += f"- {feat.get('feature', '?')}: {feat.get('importance', 0):.4f}\n"
-                narrative += "\n"
-    
-    # Grad-CAM info
-    gradcam_res = explanation.get("raw_gradcam", {})
-    if gradcam_res:
-        narrative += "## Temporal Attention (Grad-CAM)\n\n"
-        narrative += f"Generated for classes: {list(gradcam_res.keys())}\n\n"
-    
-    # Sanity check
-    sanity = explanation.get("sanity_check", {})
-    if sanity:
-        overall = sanity.get("overall", {})
-        status = overall.get("status", "UNKNOWN")
-        narrative += f"## Sanity Check: {status}\n\n"
-        narrative += f"- Passed: {overall.get('passed_checks', 0)}/{overall.get('total_checks', 0)}\n"
-    
-    return narrative
 
 
 def main():

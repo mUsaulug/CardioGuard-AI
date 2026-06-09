@@ -32,7 +32,7 @@ from src.xai.summary import (
     summarize_visual_explanations,
 )
 from src.xai.sanity import XAISanityChecker, run_sanity_check_standalone
-from src.xai.combined import CombinedExplainer, ExplanationCard, create_explanation_card
+from src.xai.pipeline import PredictResult, ExplanationResult, explain
 from src.xai.reporting import XAIReporter, generate_run_id, quick_report
 
 __all__ = [
@@ -58,10 +58,10 @@ __all__ = [
     # Sanity
     "XAISanityChecker",
     "run_sanity_check_standalone",
-    # Combined
-    "CombinedExplainer",
-    "ExplanationCard",
-    "create_explanation_card",
+    # Pipeline
+    "PredictResult",
+    "ExplanationResult",
+    "explain",
     # Reporting
     "XAIReporter",
     "generate_run_id",

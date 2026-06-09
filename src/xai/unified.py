@@ -88,11 +88,12 @@ class UnifiedExplainer:
         
         # 4. Generate Narrative
         narrative = self._generate_narrative(
-            prediction_probs, 
-            visual_evidence, 
-            feature_evidence, 
+            prediction_probs,
+            visual_evidence,
+            feature_evidence,
             dominant_source,
-            conflict_notes
+            conflict_notes,
+            primary_label=primary_label,
         )
         
         # SHAP-weighted GradCAM
@@ -123,27 +124,46 @@ class UnifiedExplainer:
             "contrastive": contrastive,
         }
 
+    @staticmethod
+    def _temporal_cam_series(cam: np.ndarray) -> np.ndarray:
+        """Reduce Grad-CAM map to 1D temporal attention (timesteps,)."""
+        arr = np.asarray(cam)
+        if arr.ndim == 1:
+            return arr
+        if arr.ndim == 2:
+            # Common shapes: (batch, time) or (leads, time)
+            if arr.shape[0] == 1:
+                return arr[0]
+            if arr.shape[-1] >= arr.shape[0]:
+                return np.mean(arr, axis=0)
+            return np.mean(arr, axis=1)
+        return arr.reshape(-1)
+
     def _extract_visual_evidence(self, gradcam_result: Dict[str, Any]) -> List[str]:
         """Extract visual evidence from Grad-CAM."""
         evidence = []
         if not gradcam_result:
-            return ["No significant visual activation."]
-            
+            return ["Anlamlı görsel aktivasyon bulunamadı."]
+
         for cls, data in gradcam_result.items():
-            # data is numpy array (timesteps,)
             if isinstance(data, np.ndarray):
-                # Find peak activation time
-                peak_time = np.argmax(data)
-                duration = len(data)
-                # Helper to describe time in ECG terms (0-10s)
-                time_sec = (peak_time / duration) * 10.0
-                evidence.append(f"{cls}: High activation around {time_sec:.1f}s.")
+                series = self._temporal_cam_series(data)
+                if series.size == 0:
+                    continue
+                peak_idx = int(np.argmax(series))
+                duration = int(series.size)
+                time_sec = (peak_idx / max(duration - 1, 1)) * 10.0
+                evidence.append(
+                    f"{cls}: Zaman ekseninde ~{time_sec:.1f}s civarında yüksek aktivasyon."
+                )
             elif isinstance(data, dict):
-                top_leads = data.get("top_leads", [])[:2] # Top 2 leads
-                time_focus = data.get("time_focus", "unknown")
-                evidence.append(f"{cls}: Focused on {', '.join(top_leads)} during {time_focus}")
-            
-        return evidence
+                top_leads = data.get("top_leads", [])[:2]
+                time_focus = data.get("time_focus", "bilinmiyor")
+                evidence.append(
+                    f"{cls}: {', '.join(top_leads) or 'seçili derivasyonlarda'} odak ({time_focus})."
+                )
+
+        return evidence or ["Anlamlı görsel aktivasyon bulunamadı."]
 
     def _extract_feature_evidence(self, shap_result: Dict[str, Any]) -> List[str]:
         """Extract top contributing features from SHAP."""
@@ -157,71 +177,116 @@ class UnifiedExplainer:
         for cls, result in shap_result.items():
             if not isinstance(result, dict):
                 continue
-            # Get feature importance from SHAP values
-            shap_values = result.get("shap_values", [])
-            # In a real scenario, we map feature indices to names here
-            # For now, we simulate extraction of top features
-            evidence.append(f"{cls}: Driven by key statistical features consistent with pathology.")
-            
+            top_feats = result.get("top_features") or []
+            if top_feats:
+                names = []
+                for feat in top_feats[:3]:
+                    label = feat.get("feature", feat.get("feature_idx", "?"))
+                    imp = feat.get("importance", 0.0)
+                    names.append(f"{label} ({imp:+.3f})")
+                evidence.append(f"{cls}: Öne çıkan özellikler — {', '.join(names)}.")
+            else:
+                evidence.append(
+                    f"{cls}: İstatistiksel özellikler patoloji yönünde katkı sağlıyor."
+                )
+
         return evidence
 
     def _analyze_coherence(self, gradcam_result, shap_result):
-        """Compute real coherence between visual and feature explanations."""
+        """Compute a calibrated coherence score between Grad-CAM and SHAP.
+
+        Combines three real signals (never a synthetic perfect 1.0):
+        1. Class agreement (Jaccard) between modalities that produced evidence.
+        2. Grad-CAM focus: how peaked the temporal attention is (diffuse = low).
+        3. SHAP dominance: how clearly one feature leads the attribution.
+        """
         if not gradcam_result or not shap_result:
-            return 0.5, ["Insufficient data for coherence analysis"]
+            return 0.4, ["Yetersiz veri: tutarlılık güvenilir hesaplanamadı."]
 
-        gradcam_peaks = set()
-        for cls, cam in gradcam_result.items():
+        gradcam_classes = {
+            cls
+            for cls, cam in gradcam_result.items()
+            if isinstance(cam, np.ndarray) and np.asarray(cam).size > 0
+        }
+        shap_classes = {
+            cls
+            for cls, data in shap_result.items()
+            if isinstance(data, dict) and data.get("top_features")
+        }
+        if not gradcam_classes or not shap_classes:
+            return 0.4, ["Modalitelerden biri anlamlı kanıt üretmedi."]
+
+        shared = gradcam_classes & shap_classes
+        union = gradcam_classes | shap_classes
+        agreement = len(shared) / len(union) if union else 0.0
+
+        # Grad-CAM focus: 1 - normalized-mean (a single sharp peak -> high focus).
+        focus_scores: List[float] = []
+        for cls in (shared or gradcam_classes):
+            cam = gradcam_result.get(cls)
             if isinstance(cam, np.ndarray):
-                cam_flat = cam.flatten()
-                if len(cam_flat) > 0:
-                    peak_region = int(np.argmax(cam_flat) / max(len(cam_flat), 1) * 10)
-                    gradcam_peaks.add(peak_region)
+                series = np.abs(self._temporal_cam_series(cam))
+                if series.size and series.max() > 0:
+                    norm = series / series.max()
+                    focus_scores.append(float(min(max(1.0 - norm.mean(), 0.0), 1.0)))
+        focus = float(np.mean(focus_scores)) if focus_scores else 0.5
 
-        shap_consistency = 0
-        shap_total = 0
-        for cls, data in shap_result.items():
-            if isinstance(data, dict) and "top_features" in data:
-                shap_total += 1
-                top_feat = data["top_features"][0] if data["top_features"] else None
-                if top_feat and top_feat.get("importance", 0) > 0.01:
-                    shap_consistency += 1
+        # SHAP dominance: top-1 share of the top-5 absolute importances.
+        dom_scores: List[float] = []
+        for cls in (shared or shap_classes):
+            data = shap_result.get(cls)
+            if isinstance(data, dict):
+                imps = [abs(f.get("importance", 0.0)) for f in (data.get("top_features") or [])[:5]]
+                total = sum(imps)
+                if total > 0:
+                    dom_scores.append(imps[0] / total)
+        dominance = float(np.mean(dom_scores)) if dom_scores else 0.5
 
-        if shap_total > 0:
-            score = 0.5 + 0.5 * (shap_consistency / shap_total)
-        else:
-            score = 0.5
+        score = 0.5 * agreement + 0.25 * focus + 0.25 * dominance
+        # Cap: never claim a perfect 1.0; floor avoids absolute zero.
+        score = float(min(max(score, 0.05), 0.97))
 
-        conflicts = []
-        if score < 0.6:
-            conflicts.append("Visual and feature explanations show low agreement.")
+        conflicts: List[str] = []
+        if agreement < 0.5:
+            conflicts.append(
+                "Görsel (Grad-CAM) ve istatistiksel (SHAP) kanıtlar farklı sınıfları öne çıkarıyor."
+            )
+        if score < 0.5:
+            conflicts.append("Açıklama modaliteleri arasında düşük uyum.")
 
         return score, conflicts
 
     def _generate_narrative(
-        self, 
-        probs: Dict[str, float], 
-        visual: List[str], 
-        feature: List[str], 
-        source: str, 
-        conflicts: List[str]
+        self,
+        probs: Dict[str, float],
+        visual: List[str],
+        feature: List[str],
+        source: str,
+        conflicts: List[str],
+        primary_label: Optional[str] = None,
     ) -> str:
-        """Generate human-readable clinical summary."""
-        primary_dx = max(probs, key=probs.get)
-        prob = probs[primary_dx]
-        
-        text = f"Diagnosis: **{primary_dx}** ({prob:.1%}).\n\n"
-        text += f"Reasoning is primarily driven by **{source}** analysis.\n"
-        
+        """Generate human-readable clinical summary (Turkish)."""
+        primary_dx = primary_label or max(probs, key=probs.get)
+        prob = probs.get(primary_dx, 0.0)
+
+        source_tr = source
+        if "XGBoost" in source:
+            source_tr = "XGBoost (özellik)"
+        elif "CNN" in source:
+            source_tr = "CNN (görsel)"
+
+        text = f"**Birincil bulgu:** {primary_dx} — ensemble olasılığı **%{prob * 100:.1f}**.\n\n"
+        text += f"Açıklama ağırlığı: **{source_tr}**.\n"
+
         if conflicts:
-            text += f"⚠️ **Attention:** {conflicts[0]}\n"
+            text += f"⚠️ **Dikkat:** {conflicts[0]}\n"
         else:
-            text += "✅ Multi-modal evidence is coherent.\n"
-            
-        text += "\n**Evidence:**\n"
+            text += "✅ Görsel (Grad-CAM) ve istatistiksel (SHAP) kanıtlar uyumlu.\n"
+
+        text += "\n**Kanıtlar:**\n"
         for v in visual:
-            text += f"- Visual: {v}\n"
+            text += f"- Grad-CAM: {v}\n"
         for f in feature:
-            text += f"- Clinical: {f}\n"
-            
+            text += f"- SHAP: {f}\n"
+
         return text

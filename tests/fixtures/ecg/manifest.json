@@ -1,0 +1,28 @@
+{
+  "description": "CardioGuard-AI local demo ECG fixtures",
+  "source": "Existing repo exports (no CSV conversion; PTB-XL optional for more)",
+  "api_usage": "POST /predict/superclass?explain=true&full=true with multipart file",
+  "samples": [
+    {
+      "file": "general_sample.npy",
+      "format": "npy",
+      "shape": [
+        12,
+        1000
+      ],
+      "dtype": "float32",
+      "notes": "Channels-first (12, 1000) expected by API"
+    },
+    {
+      "file": "mi_sample.npz",
+      "format": "npz",
+      "array_key": "signal",
+      "shape": [
+        1000,
+        12
+      ],
+      "dtype": "float32",
+      "notes": "API auto-transposes to (12, timesteps) if needed"
+    }
+  ]
+}

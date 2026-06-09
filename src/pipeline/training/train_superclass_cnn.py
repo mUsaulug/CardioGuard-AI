@@ -65,6 +65,9 @@ class MultiLabelECGCNN(nn.Module):
         embeddings = self.backbone(x)
         return self.head(embeddings)
 
+    def get_cam_layer(self) -> nn.Module:
+        return self.backbone.get_cam_layer()
+
 
 class MultiLabelECGDataset(Dataset):
     """Dataset that returns multi-hot labels for superclass."""

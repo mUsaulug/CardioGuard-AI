@@ -186,3 +186,17 @@ docker-compose up --build    # Tek komutla calistir
 pytest tests/ -v             # Tum testler
 pytest tests/test_api.py -v  # API endpoint testleri
 ```
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `mUsaulug/CardioGuard-AI` — use `gh` CLI from the terminal. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo — one `CONTEXT.md` + `docs/adr/` at the repo root (created lazily via `/grill-with-docs`). See `docs/agents/domain.md`.

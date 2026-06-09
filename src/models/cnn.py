@@ -45,6 +45,10 @@ class ECGBackbone(nn.Module):
         features = self.features(x)
         return features.squeeze(-1)
 
+    def get_cam_layer(self) -> nn.Module:
+        """Return the last conv block (pre-pool) for Grad-CAM."""
+        return self.features[4]
+
 
 class BinaryHead(nn.Module):
     """Binary classification head returning a single logit per sample."""
@@ -101,6 +105,9 @@ class ECGCNN(nn.Module):
 
         embeddings = self.backbone(x)
         return self.head(embeddings)
+
+    def get_cam_layer(self) -> nn.Module:
+        return self.backbone.get_cam_layer()
 
 
 class MultiTaskECGCNN(nn.Module):

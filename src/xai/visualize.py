@@ -7,6 +7,13 @@ Usage:
     plot_explanation(signal, gradcam_map, output_path, title)
 """
 
+import matplotlib
+
+# Force a non-interactive, thread-safe backend: the FastAPI request handler runs
+# off the main thread (uvicorn threadpool), where GUI backends crash and silently
+# drop the XAI report PNG. Must be set before importing pyplot.
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path

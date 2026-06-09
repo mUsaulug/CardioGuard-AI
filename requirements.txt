@@ -14,3 +14,5 @@ uvicorn[standard]
 joblib
 pydantic
 python-multipart
+pytest
+httpx

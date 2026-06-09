@@ -52,9 +52,7 @@ except ImportError:
 
 from xgboost import XGBClassifier
 
-
-# Class order for OVR models
-PATHOLOGY_CLASSES = ["MI", "STTC", "CD", "HYP"]
+from src.config import SUPERCLASS_LABELS as PATHOLOGY_CLASSES
 
 
 def explain_single_model(
@@ -180,6 +178,7 @@ def explain_single_sample(
     models: Dict[str, XGBClassifier],
     X_single: np.ndarray,
     relevant_classes: List[str] = None,
+    feature_names: Optional[List[str]] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """
     Explain a single sample for relevant classes only.
@@ -188,6 +187,7 @@ def explain_single_sample(
         models: OVR models
         X_single: Single sample features (1, n_features) or (n_features,)
         relevant_classes: Only explain these classes (default: all)
+        feature_names: Optional human-readable names for each feature column.
         
     Returns:
         Dictionary of class -> explanation
@@ -226,7 +226,9 @@ def explain_single_sample(
         results[cls]["feature_importance"] = np.abs(results[cls]["shap_values"])
 
         # Get top features
-        results[cls]["top_features"] = get_top_features(results[cls], top_k=10)
+        results[cls]["top_features"] = get_top_features(
+            results[cls], feature_names=feature_names, top_k=10
+        )
 
     return results
 

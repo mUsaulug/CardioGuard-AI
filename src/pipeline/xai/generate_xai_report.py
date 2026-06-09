@@ -41,7 +41,8 @@ from src.utils.checkpoints import load_checkpoint_state_dict
 from src.data.mi_localization import MI_LOCALIZATION_REGIONS
 from src.xai.gradcam import GradCAM, generate_relevant_gradcam, smooth_gradcam
 from src.xai.sanity import XAISanityChecker
-from src.xai.combined import CombinedExplainer, create_explanation_card
+from src.xai.shap_ovr import explain_single_sample
+from src.xai.unified import UnifiedExplainer
 from src.xai.reporting import XAIReporter, generate_run_id
 from src.xai.visualize import generate_xai_report_png
 
@@ -387,17 +388,37 @@ def process_single_sample(
     )
     cnn_model.eval()
     
-    # Combined explanation
-    combined_explainer = CombinedExplainer(
-        cnn_model, xgb_data, class_order=SUPERCLASS_LABELS
+    shap_result: Dict[str, Any] = {}
+    if xgb_data and xgb_data.get("models"):
+        shap_result = explain_single_sample(
+            xgb_data["models"],
+            embeddings,
+            relevant_classes=[pred_class],
+        )
+
+    gradcam_dict = {pred_class: gradcam_result.squeeze()}
+    unifier = UnifiedExplainer()
+    synthesized = unifier.synthesize(
+        gradcam_dict,
+        shap_result,
+        probs_dict,
+        ensemble_weight=0.5,
+        primary_label=pred_class,
+        runnerup_label=runnerup,
     )
-    
-    explanation = combined_explainer.explain(
-        signal_tensor, embeddings, pred_class, probs_dict,
-        contrastive=True,
-        gradcam_func=lambda m, t, c: gradcam_result
-    )
-    explanation["gradcam"] = {"heatmap": gradcam_result.squeeze()}
+
+    combined_heatmap = synthesized.get("combined_heatmap")
+    if combined_heatmap is None:
+        combined_heatmap = gradcam_result.squeeze()
+
+    explanation = {
+        "target_class": pred_class,
+        "contrastive_mode": "pred_minus_runnerup" if runnerup else "pred_only",
+        "shap": shap_result.get(pred_class, {}),
+        "gradcam": {"heatmap": gradcam_result.squeeze()},
+        "combined": {"heatmap": combined_heatmap},
+        "contrastive": synthesized.get("contrastive"),
+    }
     
     # Sanity checks
     sanity = {"overall": {"status": "SKIPPED", "passed_checks": 0, "total_checks": 4}}
@@ -422,8 +443,7 @@ def process_single_sample(
             class_index=class_idx
         )
     
-    # Generate narrative
-    narrative = combined_explainer.generate_narrative(explanation, pred_class, pred_proba)
+    narrative = synthesized.get("narrative", "")
     
     # Add to reporter
     reporter.add_sample(

@@ -47,6 +47,8 @@ from pydantic import BaseModel, Field
 
 RUNS_DIR = Path("reports/xai/runs")
 RUN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+CLIENT_LOG_DIR = Path("logs")
+CLIENT_LOG_FILE = CLIENT_LOG_DIR / "client-events.jsonl"
 
 
 # =============================================================================
@@ -80,8 +82,28 @@ class VersionInfo(BaseModel):
     """Model version information."""
     model_hash: str = Field(..., description="Hash of model checkpoint")
     threshold_hash: str = Field(..., description="Hash of threshold config")
-    api_version: str = Field(default="1.1.0", description="API version")
+    api_version: str = Field(default="1.2.0", description="API version")
     timestamp: str = Field(..., description="Prediction timestamp")
+
+
+class ExplanationInfo(BaseModel):
+    """Inline XAI explanation summary for frontend consumption."""
+    narrative: str = Field(default="", description="Unified XAI narrative")
+    coherence_score: float = Field(..., description="Grad-CAM vs SHAP coherence")
+    sanity_passed: Optional[bool] = Field(None, description="Sanity check passed (null=skipped)")
+    gradcam_summary: str = Field(default="", description="Grad-CAM text summary")
+    shap_summary: str = Field(default="", description="SHAP text summary")
+    dominant_source: str = Field(default="", description="Dominant evidence source")
+    conflicts: List[str] = Field(default=[], description="Conflicting evidence notes")
+
+
+class LocalizationInline(BaseModel):
+    """Inline MI localization from superclass predict path."""
+    mi_detected: bool = Field(..., description="Whether MI localization is active")
+    regions: List[str] = Field(default=[], description="Predicted MI regions")
+    probabilities: Dict[str, float] = Field(default={}, description="Per-region probabilities")
+    labels: List[str] = Field(default=[], description="Region label codes")
+    labels_tr: Dict[str, str] = Field(default={}, description="Turkish region labels")
 
 
 class XAIArtifact(BaseModel):
@@ -124,6 +146,11 @@ class SuperclassPredictionResponse(BaseModel):
     versions: VersionInfo
     xai: Optional[XAIInfo] = Field(None, description="XAI artifacts info")
     consistency: Optional[ConsistencyInfo] = Field(None, description="Model agreement check")
+    explanation: Optional[ExplanationInfo] = Field(None, description="Inline XAI explanation")
+    localization: Optional[LocalizationInline] = Field(None, description="Inline MI localization")
+    glossary: Dict[str, str] = Field(default={}, description="Turkish clinical glossary")
+    airesult: Optional[Dict[str, Any]] = Field(None, description="Canonical AIResult v1.0 (full=true)")
+    latency_ms: Optional[float] = Field(None, description="Server-side inference latency in milliseconds")
 
 
 class MILocalizationResponse(BaseModel):
@@ -305,7 +332,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="CardioGuard-AI",
     description="Multi-label ECG Classification API",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
@@ -433,6 +460,40 @@ async def readiness_check():
 
 
 # =============================================================================
+# Client debug log (browser → agent-readable file)
+# =============================================================================
+
+
+class ClientLogEvent(BaseModel):
+    ts: str
+    level: str = "info"
+    category: str = "ui"
+    message: str
+    meta: Optional[Dict[str, Any]] = None
+
+
+@app.post("/debug/client-log")
+async def append_client_log(event: ClientLogEvent):
+    """Append one frontend debug event to logs/client-events.jsonl."""
+    CLIENT_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(event.model_dump(), ensure_ascii=False) + "\n"
+    with open(CLIENT_LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(line)
+    return {"ok": True}
+
+
+@app.get("/debug/client-log")
+async def read_client_log(tail: int = Query(50, ge=1, le=500)):
+    """Return recent frontend debug events (for local QA / agent inspection)."""
+    if not CLIENT_LOG_FILE.exists():
+        return {"events": [], "count": 0, "file": str(CLIENT_LOG_FILE)}
+    lines = [ln for ln in CLIENT_LOG_FILE.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    slice_lines = lines[-tail:]
+    events = [json.loads(ln) for ln in slice_lines]
+    return {"events": events, "count": len(events), "file": str(CLIENT_LOG_FILE)}
+
+
+# =============================================================================
 # Static Artifact Serving (Secure)
 # =============================================================================
 
@@ -479,9 +540,15 @@ async def serve_xai_artifact(run_id: str, file_path: str):
 @app.post("/predict/superclass", response_model=SuperclassPredictionResponse)
 async def predict_superclass(
     file: UploadFile = File(...),
-    ensemble_weight: float = Query(0.5, ge=0.0, le=1.0),
+    ensemble_weight: float = Query(
+        0.15,
+        ge=0.0,
+        le=1.0,
+        description="CNN weight in ensemble (XGB weight = 1 - this). Optimized default 0.15.",
+    ),
     explain: bool = Query(False, description="Generate XAI artifacts"),
     sanity_check: bool = Query(False, description="Run XAI sanity checks"),
+    full: bool = Query(False, description="Include canonical AIResult v1.0 payload"),
 ):
     """
     Multi-label superclass prediction.
@@ -489,6 +556,14 @@ async def predict_superclass(
     Pipeline does ALL inference and XAI generation.
     Backend only maps result to response.
     """
+    import uuid
+
+    from src.contracts.airesult_mapper import map_predict_output_to_airesult
+    from src.contracts.api_mapper import (
+        build_glossary_subset,
+        map_explanation_info,
+        map_localization_inline,
+    )
     from src.pipeline.inference.run_inference_superclass import predict as pipeline_predict
     from src.xai.reporting import generate_run_id
     
@@ -517,6 +592,9 @@ async def predict_superclass(
         save_plot = run_dir / "visuals" / f"{sample_id}_report.png"
     
     # PIPELINE DOES ALL WORK - no inline inference here
+    import time as _time
+
+    _t0 = _time.perf_counter()
     try:
         result = pipeline_predict(
             signal=signal,
@@ -537,6 +615,7 @@ async def predict_superclass(
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"Prediction failed: {e}")
+    latency_ms = round((_time.perf_counter() - _t0) * 1000.0, 1)
     
     # Read XAI info from manifest (if explain=true, pipeline wrote it)
     xai_info = None
@@ -548,7 +627,31 @@ async def predict_superclass(
     probs = multi.get("probabilities", {})
     sources = result.get("sources", {})
     primary = result.get("primary", {})
-    
+    predicted_labels = multi.get("predicted_labels", ["NORM"])
+
+    explanation_mapped = map_explanation_info(result.get("explanation"))
+    explanation_info = (
+        ExplanationInfo(**explanation_mapped) if explanation_mapped else None
+    )
+
+    mi_detected = "MI" in predicted_labels
+    localization_mapped = map_localization_inline(
+        result.get("mi_localization"),
+        mi_detected=mi_detected,
+    )
+    localization_info = (
+        LocalizationInline(**localization_mapped) if localization_mapped else None
+    )
+
+    airesult_payload = None
+    if full:
+        airesult_payload = map_predict_output_to_airesult(
+            predict_out=result,
+            case_id=str(uuid.uuid4()),
+            sample_id=sample_id,
+            run_dir=run_dir,
+        )
+
     return SuperclassPredictionResponse(
         mode="multilabel-superclass",
         probabilities=PredictionProbabilities(
@@ -558,7 +661,7 @@ async def predict_superclass(
             HYP=probs.get("HYP", 0),
             NORM=probs.get("NORM", 0),
         ),
-        predicted_labels=multi.get("predicted_labels", ["NORM"]),
+        predicted_labels=predicted_labels,
         thresholds=multi.get("thresholds", state.thresholds),
         primary=PrimaryPrediction(
             label=primary.get("label", "NORM"),
@@ -577,6 +680,11 @@ async def predict_superclass(
         ),
         xai=xai_info,
         consistency=ConsistencyInfo(**result["consistency"]) if result.get("consistency") else None,
+        explanation=explanation_info,
+        localization=localization_info,
+        glossary=build_glossary_subset(),
+        airesult=airesult_payload,
+        latency_ms=latency_ms,
     )
 
 
@@ -595,7 +703,7 @@ async def predict_mi_localization(
     from src.pipeline.inference.run_inference_localization import predict as pipeline_predict_localization
     from src.xai.reporting import generate_run_id
     from src.data.mi_localization import MI_LOCALIZATION_REGIONS
-    from src.utils.checkpoint_validation import MI_LOCALIZATION_FINGERPRINT
+    from src.config import MI_LOCALIZATION_FINGERPRINT
     
     if state.localization_model is None:
         raise HTTPException(503, "MI localization model not loaded")
@@ -652,10 +760,13 @@ async def predict_mi_localization(
 # Static Frontend (Docker production)
 # =============================================================================
 
-# Serve frontend static files in production (Docker)
-_frontend_dist = Path("frontend/dist")
-if _frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
+# Serve pre-built client assets when available (TanStack Start: dist/client)
+_frontend_dist = Path("frontend/dist/client")
+if not _frontend_dist.exists():
+    _frontend_dist = Path("frontend/dist")
+_assets_dir = _frontend_dist / "assets"
+if _assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="frontend-assets")
 
 
 # =============================================================================

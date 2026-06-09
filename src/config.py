@@ -7,7 +7,7 @@ All paths, constants, and hyperparameters should be defined here.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -75,6 +75,76 @@ class RAGSource:
     path: Optional[Path] = None
     notes: Optional[str] = None
 
+
+# =============================================================================
+# Task Schema — single source of truth for all task definitions
+# =============================================================================
+
+# Pathology classes predicted by the superclass model (NORM is derived, not predicted)
+SUPERCLASS_LABELS = ["MI", "STTC", "CD", "HYP"]
+
+# MI localization anatomical regions (derived from PTB-XL SCP codes via MI_CODE_TO_REGIONS)
+MI_LOCALIZATION_LABELS = ["AMI", "ASMI", "ALMI", "IMI", "LMI"]
+
+# Turkish display labels — canonical source for API + frontend conformance
+PATHOLOGY_LABELS_TR: Dict[str, str] = {
+    "MI": "Miyokard Enfarktüsü",
+    "STTC": "ST/T Değişikliği",
+    "CD": "İletim Bozukluğu",
+    "HYP": "Hipertrofi",
+    "NORM": "Normal",
+}
+
+MI_LOCALIZATION_LABELS_TR: Dict[str, str] = {
+    "AMI": "Anterior MI",
+    "ASMI": "Anteroseptal MI",
+    "ALMI": "Anterolateral MI",
+    "IMI": "İnferior MI",
+    "LMI": "Lateral MI",
+}
+
+TRIAGE_TR: Dict[str, str] = {
+    "HIGH": "YÜKSEK",
+    "MEDIUM": "ORTA",
+    "LOW": "DÜŞÜK",
+    "REVIEW": "İNCELEME",
+}
+
+GLOSSARY: Dict[str, str] = {
+    "MI": "Miyokard Enfarktüsü — kalp kasında kan akımının kesilmesi sonucu hasar",
+    "STTC": "ST/T değişikliği — iskemi veya repolarizasyon bozukluğu bulguları",
+    "CD": "İletim bozukluğu — kalp elektrik iletiminde gecikme veya blok",
+    "HYP": "Hipertrofi — kalp odacıklarında veya duvarında kalınlaşma",
+    "NORM": "Normal EKG — belirgin patoloji tespit edilmedi",
+    "AMI": "Anterior miyokard enfarktüsü — V3-V4 derivasyonları",
+    "ASMI": "Anteroseptal miyokard enfarktüsü — V1-V4 derivasyonları",
+    "ALMI": "Anterolateral miyokard enfarktüsü — V3-V6, I, aVL",
+    "IMI": "İnferior miyokard enfarktüsü — II, III, aVF derivasyonları",
+    "LMI": "Lateral miyokard enfarktüsü — I, aVL, V5-V6 derivasyonları",
+    "Consistency Guard": (
+        "İki bağımsız MI modelinin uyumunu kontrol eden güvenlik katmanı"
+    ),
+}
+
+CLINICAL_DISCLAIMER = "Bu sistem tanı koymaz; klinik karar destek aracıdır."
+
+# Output dimensions per task — must match model checkpoint head sizes
+TASK_OUTPUT_DIMS = {
+    "binary": 1,
+    "superclass": 4,
+    "mi_localization": 5,
+}
+
+# Labels per task
+TASK_LABELS = {
+    "binary": ["MI"],
+    "superclass": SUPERCLASS_LABELS,
+    "mi_localization": MI_LOCALIZATION_LABELS,
+}
+
+# Fingerprint of MI_CODE_TO_REGIONS mapping (sha256[:16] of sorted dict)
+# Update this if MI_CODE_TO_REGIONS changes in src/data/mi_localization.py
+MI_LOCALIZATION_FINGERPRINT = "8ab274e06afa1be8"
 
 # Diagnostic class mappings
 DIAGNOSTIC_SUPERCLASSES = ["NORM", "MI", "STTC", "CD", "HYP"]

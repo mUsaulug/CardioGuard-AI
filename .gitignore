@@ -12,6 +12,12 @@ dist/
 build/
 .DS_Store
 *.log
+logs/client-events.jsonl
+reports/xai/runs/
+.venv312/
+.cursor/
+.agents/
+.claude/
 .pytest_cache/
 .coverage
 htmlcov/

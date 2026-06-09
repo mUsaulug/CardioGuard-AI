@@ -19,6 +19,8 @@ from typing import Any, Dict, Literal, Optional
 
 import torch
 
+from src.config import TASK_OUTPUT_DIMS, TASK_LABELS, MI_LOCALIZATION_FINGERPRINT
+
 
 # =============================================================================
 # Custom Exceptions
@@ -32,26 +34,6 @@ class CheckpointMismatchError(Exception):
 class MappingDriftError(Exception):
     """Raised when MI localization mapping has changed since training."""
     pass
-
-
-# =============================================================================
-# Constants
-# =============================================================================
-
-TASK_OUTPUT_DIMS: Dict[str, int] = {
-    "binary": 1,
-    "superclass": 4,
-    "mi_localization": 5,
-}
-
-TASK_LABELS: Dict[str, list] = {
-    "binary": ["MI"],  # vs NORM
-    "superclass": ["MI", "STTC", "CD", "HYP"],
-    "mi_localization": ["AMI", "ASMI", "ALMI", "IMI", "LMI"],
-}
-
-# Locked at training time - update if MI_CODE_TO_REGIONS changes
-MI_LOCALIZATION_FINGERPRINT = "8ab274e06afa1be8"
 
 
 # =============================================================================

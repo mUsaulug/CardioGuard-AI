@@ -81,7 +81,9 @@ class TestConfig:
         assert config.min_likelihood == 50.0
     
     def test_config_paths(self, config):
-        """Test that config paths exist."""
+        """Test that config paths exist (requires the PTB-XL dataset locally)."""
+        if not config.data_root.exists():
+            pytest.skip(f"PTB-XL dataset not present at {config.data_root}")
         assert config.metadata_path.exists(), f"Metadata not found: {config.metadata_path}"
         assert config.scp_statements_path.exists(), f"SCP statements not found: {config.scp_statements_path}"
         assert config.records_path.exists(), f"Records not found: {config.records_path}"

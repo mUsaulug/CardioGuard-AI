@@ -1,5 +1,5 @@
 # CardioGuard-AI Docker Image
-# Frontend must be pre-built: cd frontend && npm run build
+# Frontend must be pre-built: cd frontend && npm install && npm run build
 # Then: docker-compose up --build
 
 FROM python:3.10-slim

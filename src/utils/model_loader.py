@@ -117,8 +117,8 @@ def load_model_safe(
     """
     from src.models.cnn import ECGCNN, ECGCNNConfig, build_sequential_cnn
     
-    TASK_DIMS = {"binary": 1, "superclass": 4, "mi_localization": 5}
-    expected_dim = TASK_DIMS[expected_task]
+    from src.config import TASK_OUTPUT_DIMS
+    expected_dim = TASK_OUTPUT_DIMS[expected_task]
     
     # Load checkpoint
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
