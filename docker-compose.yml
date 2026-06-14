@@ -1,7 +1,9 @@
 version: "3.8"
 services:
   cardioguard:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.full
     container_name: cardioguard-ai
     ports:
       - "8000:8000"
