@@ -10,6 +10,7 @@ docs
 tests
 predictions
 features_out
+!features_out/superclass_feature_config.json
 academic_assets
 figures
 *.md

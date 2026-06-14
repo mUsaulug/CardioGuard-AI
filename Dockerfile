@@ -14,7 +14,7 @@ COPY src/ src/
 COPY checkpoints/ checkpoints/
 COPY logs/ logs/
 COPY artifacts/ artifacts/
-COPY features_out/ features_out/
+COPY features_out/superclass_feature_config.json features_out/superclass_feature_config.json
 
 ENV OMP_NUM_THREADS=1
 ENV KMP_DUPLICATE_LIB_OK=TRUE
