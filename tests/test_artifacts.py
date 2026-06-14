@@ -191,6 +191,21 @@ class TestExtractSanity:
         result = extract_sanity(explanation)
         
         assert result["status"] == "FAIL"
+
+    def test_extract_reliable_maps_to_pass(self):
+        """Producer vocabulary RELIABLE/ACCEPTABLE → PASS."""
+        explanation = {
+            "sanity_check": {
+                "overall": {
+                    "status": "RELIABLE",
+                    "passed_checks": 3,
+                    "total_checks": 4,
+                }
+            }
+        }
+        result = extract_sanity(explanation)
+        assert result is not None
+        assert result["status"] == "PASS"
     
     def test_extract_none_explanation(self):
         """Test with None explanation returns None."""

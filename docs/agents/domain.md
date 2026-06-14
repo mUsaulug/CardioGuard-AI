@@ -6,6 +6,9 @@ How the engineering skills should consume this repo's domain documentation.
 
 - **`CONTEXT.md`** at the repo root — domain glossary and bounded context.
 - **`docs/adr/`** — architectural decision records. Read ADRs that touch the area you're about to work in.
+- **`docs/agents/ORCHESTRATION_PLAN.md`** — full-repo audit plan, ön bulgular (F-*), 14 agent tanımı.
+- **`docs/agents/VALIDATION_PROMPT.md`** — Plan modunda bulguları doğrulama prompt'u (Tur 1).
+- **`docs/agents/ROUND-3_VALIDATION_PROMPT.md`** — Tur 3 açık maddeler doğrulama prompt'u.
 
 If either doesn't exist yet, proceed silently. They are created lazily via `/grill-with-docs` as terms and decisions crystallise.
 

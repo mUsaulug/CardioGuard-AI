@@ -35,7 +35,11 @@ export function TechnicalDetails({ ctx }: { ctx: AnalysisContext }) {
       {open && (
         <div className="border-t border-border p-4">
           <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span className="font-mono">model_hash: {ctx.sessionId.slice(0, 12)} · API v1.0 · thr#a3f9</span>
+            <span className="font-mono">
+              {ctx.versions
+                ? `model_hash: ${ctx.versions.model_hash} · API ${ctx.versions.api_version} · thr#${ctx.versions.threshold_hash}`
+                : `session: ${ctx.sessionId.slice(0, 12)}`}
+            </span>
             <button onClick={copy} className="flex items-center gap-1 rounded px-2 py-1 hover:bg-muted">
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               Kopyala

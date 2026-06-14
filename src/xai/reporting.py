@@ -116,7 +116,7 @@ class XAIReporter:
         
         Args:
             sample_id: Unique sample identifier
-            explanation: Output from CombinedExplainer
+            explanation: Output from UnifiedExplainer (see src/xai/unified.py)
             sanity: Output from XAISanityChecker
             prediction: Prediction dict with pred_class, pred_proba, etc.
             signal: Original ECG signal (optional, for visuals)

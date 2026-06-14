@@ -26,10 +26,25 @@ def test_ready_returns_model_status(client):
     data = response.json()
     assert "ready" in data
     assert "models_loaded" in data
+    assert "degraded" in data
+    assert "degraded_models" in data
     assert isinstance(data["models_loaded"], dict)
     # Check expected model keys
     for key in ["superclass", "localization", "xgb", "thresholds"]:
         assert key in data["models_loaded"]
+
+
+def test_ready_reports_degraded(client):
+    """GET /ready should expose degraded mode when optional models are missing."""
+    import src.backend.main as main_mod
+
+    main_mod.state.degraded = True
+    main_mod.state.degraded_models = ["binary"]
+    response = client.get("/ready")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["degraded"] is True
+    assert "binary" in data["degraded_models"]
 
 
 # --- Superclass Prediction ---
@@ -67,6 +82,53 @@ def test_predict_superclass_with_npy(client):
     assert "label" in data["primary"]
     assert "confidence" in data["primary"]
     assert "rule" in data["primary"]
+
+
+def test_predict_superclass_default_ensemble_weight(client):
+    """Default ensemble uses CNN weight from thresholds artifact (0.15)."""
+    from src.config import get_ensemble_cnn_weight
+
+    sample_path = PROJECT_ROOT / "sample.npy"
+    if not sample_path.exists():
+        pytest.skip("sample.npy not found")
+
+    w = get_ensemble_cnn_weight()
+    with open(sample_path, "rb") as f:
+        response = client.post(
+            "/predict/superclass?explain=false",
+            files={"file": ("sample.npy", f, "application/octet-stream")},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    sources = data["sources"]
+    assert sources.get("xgb") is not None
+    for cls in ["MI", "STTC", "CD", "HYP"]:
+        cnn_p = sources["cnn"][cls]
+        xgb_p = sources["xgb"][cls]
+        ens_p = sources["ensemble"][cls]
+        expected = w * cnn_p + (1.0 - w) * xgb_p
+        assert abs(ens_p - expected) < 1e-4, cls
+
+
+def test_predict_superclass_full_airesult_reports_ensemble_weight(client):
+    """full=true AIResult must echo the requested ensemble_weight."""
+    sample_path = PROJECT_ROOT / "sample.npy"
+    if not sample_path.exists():
+        pytest.skip("sample.npy not found")
+
+    custom_w = 0.5
+    with open(sample_path, "rb") as f:
+        response = client.post(
+            f"/predict/superclass?ensemble_weight={custom_w}&explain=false&full=true",
+            files={"file": ("sample.npy", f, "application/octet-stream")},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    airesult = data.get("airesult")
+    assert airesult is not None
+    assert airesult["versions"]["ensemble_best_alpha"] == custom_w
 
 
 def test_predict_superclass_with_npz(client):
@@ -278,6 +340,18 @@ def test_nonexistent_artifact_returns_404(client):
 
 # --- Client debug log ---
 
+def test_client_debug_log_disabled_returns_404(client, monkeypatch):
+    """Debug endpoints must be env-gated (off by default in production)."""
+    monkeypatch.setenv("ENABLE_DEBUG_ENDPOINTS", "0")
+    post = client.post(
+        "/debug/client-log",
+        json={"ts": "2026-06-09T12:00:00Z", "message": "nope"},
+    )
+    assert post.status_code == 404
+    get = client.get("/debug/client-log")
+    assert get.status_code == 404
+
+
 def test_client_debug_log_roundtrip(client, tmp_path, monkeypatch):
     """POST /debug/client-log append + GET tail for browser QA."""
     import src.backend.main as main_mod
@@ -301,3 +375,64 @@ def test_client_debug_log_roundtrip(client, tmp_path, monkeypatch):
     data = get.json()
     assert data["count"] == 1
     assert data["events"][0]["message"] == "test event"
+
+
+def test_llm_status_endpoint(client):
+    r = client.get("/api/llm/status")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["proxy_enabled"] is True
+    assert isinstance(data["default_models"], list)
+    assert len(data["default_models"]) >= 1
+
+
+def test_llm_chat_requires_key_when_locked_down(client, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("ALLOW_CLIENT_LLM_KEY", "0")
+    r = client.post(
+        "/api/llm/chat",
+        json={
+            "model": "openrouter/free",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+        },
+    )
+    assert r.status_code == 401
+
+
+def test_llm_chat_proxies_with_client_key_header(client, monkeypatch):
+    import httpx
+
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("ALLOW_CLIENT_LLM_KEY", "1")
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, *args, **kwargs):
+            assert kwargs.get("headers", {}).get("Authorization") == "Bearer sk-or-test"
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": "Merhaba"}}]},
+            )
+
+    monkeypatch.setattr("src.backend.llm_proxy.httpx.AsyncClient", FakeAsyncClient)
+
+    r = client.post(
+        "/api/llm/chat",
+        headers={"X-OpenRouter-Key": "sk-or-test"},
+        json={
+            "model": "openrouter/free",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+        },
+    )
+    assert r.status_code == 200
+    assert r.json()["choices"][0]["message"]["content"] == "Merhaba"

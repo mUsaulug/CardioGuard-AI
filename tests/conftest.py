@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 # Reduce native-library thread contention during model load in tests.
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("ENABLE_DEBUG_ENDPOINTS", "1")
 
 from src.backend.main import app
 

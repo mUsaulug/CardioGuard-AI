@@ -20,8 +20,7 @@ import numpy as np
 from sklearn.metrics import f1_score, roc_curve, fbeta_score
 
 
-# Multi-label class order
-SUPERCLASS_LABELS = ["MI", "STTC", "CD", "HYP"]
+from src.config import SUPERCLASS_LABELS, get_ensemble_cnn_weight
 
 
 def find_threshold_fbeta(
@@ -142,15 +141,18 @@ def main():
                         help="Path to ground truth labels .npz")
     parser.add_argument("--output", type=Path, default=Path("artifacts/thresholds_superclass.json"),
                         help="Output path for thresholds")
-    parser.add_argument("--ensemble-weight", type=float, default=0.5,
-                        help="Weight for CNN (1-weight for XGB)")
+    parser.add_argument("--ensemble-weight", type=float, default=None,
+                        help="Weight for CNN (1-weight for XGB); default from thresholds artifact")
     parser.add_argument("--mi-beta", type=float, default=2.0,
                         help="Beta for MI F_beta optimization")
     parser.add_argument("--mi-recall-min", type=float, default=0.0,
                         help="Minimum recall constraint for MI (0 = no constraint)")
     
     args = parser.parse_args()
-    
+    ensemble_weight = (
+        args.ensemble_weight if args.ensemble_weight is not None else get_ensemble_cnn_weight()
+    )
+
     print("Loading data...")
     
     # Load CNN probabilities
@@ -166,8 +168,8 @@ def main():
     y_true = labels_data["y_multi"]
     
     # Compute ensemble probabilities
-    print(f"Computing ensemble (CNN weight={args.ensemble_weight})...")
-    w = args.ensemble_weight
+    print(f"Computing ensemble (CNN weight={ensemble_weight})...")
+    w = ensemble_weight
     ensemble_probs = {
         cls: w * cnn_probs[cls] + (1 - w) * xgb_probs[cls]
         for cls in SUPERCLASS_LABELS

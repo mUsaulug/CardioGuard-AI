@@ -41,6 +41,12 @@ export interface AnalysisContext {
   /** Server-side inference latency in ms (null for mock/demo). */
   latencyMs: number | null;
   glossary: Record<string, string>;
+  /** API version metadata from backend (when available). */
+  versions?: {
+    model_hash: string;
+    threshold_hash: string;
+    api_version: string;
+  };
 }
 
 export interface XaiArtifact {

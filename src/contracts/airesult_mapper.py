@@ -19,6 +19,7 @@ from src.config import (
     SUPERCLASS_LABELS as PATHOLOGY_CLASSES,
     MI_LOCALIZATION_LABELS,
     MI_LOCALIZATION_FINGERPRINT as MI_LOCALIZATION_MAPPING_FINGERPRINT,
+    get_ensemble_cnn_weight,
 )
 
 
@@ -81,13 +82,24 @@ def compute_triage(
     - LOW: NORM (no pathology)
     - REVIEW: Input validation failed
     """
-    # Validation check first
-    shape = input_meta.get("shape", [])
-    if shape != [12, 1000]:
+    validation = input_meta.get("validation") or {}
+    if validation.get("valid") is False:
         return {
             "level": "REVIEW",
             "rule": "Input validation failed",
-            "notes": f"Expected shape [12, 1000], got {shape}"
+            "notes": validation.get("reason", "Signal failed validation"),
+        }
+
+    shape = input_meta.get("shape", [])
+    ptbxl_standard = (input_meta.get("validation") or {}).get(
+        "ptbxl_standard",
+        shape == [12, 1000],
+    )
+    if len(shape) != 2 or shape[0] != 12 or shape[1] != 1000 or not ptbxl_standard:
+        return {
+            "level": "REVIEW",
+            "rule": "Input validation failed",
+            "notes": f"Expected PTB-XL shape [12, 1000], got {shape}",
         }
     
     pathologies = predictions.get("multilabel", {}).get("pathologies", [])
@@ -136,19 +148,43 @@ def compute_triage(
 def derive_input_meta(
     signal_path: Optional[Path] = None,
     request_payload: Optional[Dict[str, Any]] = None,
+    validation_meta: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Derive input metadata without reading raw data.
-    
-    Uses defaults from PTB-XL dataset configuration.
+    Derive input metadata for AIResult.
+
+    When validation_meta is supplied (from validate_ecg_signal), uses measured shape
+    and quality flags. Otherwise falls back to PTB-XL defaults.
     """
+    if validation_meta is not None:
+        fmt = "npy"
+        if signal_path is not None:
+            fmt = signal_path.suffix.lstrip(".") or fmt
+        meta = {
+            "format": fmt,
+            "sample_rate_hz": validation_meta.get("sample_rate_hz", 100),
+            "duration_sec": validation_meta.get("duration_sec", 10.0),
+            "shape": validation_meta.get("shape", [12, 1000]),
+            "leads": LEADS,
+            "quality_flags": validation_meta.get("quality_flags"),
+            "validation": validation_meta.get("validation"),
+            "amplitude_max": validation_meta.get("amplitude_max"),
+            "amplitude_std": validation_meta.get("amplitude_std"),
+        }
+        if request_payload:
+            for key in ["format", "sample_rate_hz", "duration_sec", "shape"]:
+                if key in request_payload and request_payload[key] is not None:
+                    meta[key] = request_payload[key]
+        return meta
+
     meta = {
         "format": "npz",
         "sample_rate_hz": 100,
         "duration_sec": 10.0,
         "shape": [12, 1000],
         "leads": LEADS,
-        "quality_flags": None
+        "quality_flags": None,
+        "validation": {"valid": True, "ptbxl_standard": True},
     }
     
     if signal_path is not None:
@@ -324,7 +360,7 @@ def map_predict_output_to_airesult(
         "cnn_checkpoint": versions_out.get("cnn_checkpoint", "checkpoints/ecgcnn_superclass.pt"),
         "xgb_dir": versions_out.get("xgb_dir"),
         "thresholds_file": versions_out.get("thresholds_file", "artifacts/thresholds_superclass.json"),
-        "ensemble_best_alpha": 0.15,  # From ensemble_config.json
+        "ensemble_best_alpha": predict_out.get("ensemble_weight", get_ensemble_cnn_weight()),
         "run_manifest": str(run_dir / "manifest.json") if run_dir else None,
         "airesult_version": AIRESULT_VERSION
     }

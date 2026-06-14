@@ -8,6 +8,11 @@ All paths, constants, and hyperparameters should be defined here.
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
+import json
+
+
+# Minimum likelihood for PTB-XL label assignment (0–100 scale). Training scripts use this SSOT.
+DEFAULT_MIN_LIKELIHOOD = 0.0
 
 
 @dataclass
@@ -31,11 +36,10 @@ class PTBXLConfig:
     
     # Random seed for reproducibility
     random_seed: int = 42
-    
-    # Minimum likelihood threshold for label assignment
-    # PTB-XL uses 0-100 scale for likelihood
-    min_likelihood: float = 50.0
-    
+
+    # Minimum likelihood threshold for label assignment (PTB-XL 0–100 scale)
+    min_likelihood: float = DEFAULT_MIN_LIKELIHOOD
+
     # Label task type
     task: str = "binary"  # "binary" for MI vs NORM, "multiclass" for 5-class
     
@@ -185,6 +189,26 @@ RAG_SOURCES = [
         notes="Planned: internal clinical notes.",
     ),
 ]
+
+
+DEFAULT_THRESHOLDS_ARTIFACT = Path("artifacts/thresholds_superclass.json")
+DEFAULT_ENSEMBLE_CNN_WEIGHT = 0.15  # fallback; prefer artifact file
+
+
+def load_superclass_thresholds_artifact(path: Optional[Path] = None) -> dict:
+    """Load thresholds JSON artifact (thresholds + ensemble_weight)."""
+    artifact_path = path or DEFAULT_THRESHOLDS_ARTIFACT
+    with open(artifact_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_ensemble_cnn_weight(path: Optional[Path] = None) -> float:
+    """CNN weight in ensemble — single source from thresholds artifact."""
+    try:
+        data = load_superclass_thresholds_artifact(path)
+        return float(data.get("ensemble_weight", DEFAULT_ENSEMBLE_CNN_WEIGHT))
+    except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError):
+        return DEFAULT_ENSEMBLE_CNN_WEIGHT
 
 
 def get_default_config(project_root: Optional[Path] = None) -> PTBXLConfig:

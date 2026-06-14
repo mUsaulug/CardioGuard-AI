@@ -82,6 +82,13 @@ describe("mapResultToContext", () => {
     expect(ctx.latencyMs).toBeNull();
   });
 
+  it("maps API versions metadata", () => {
+    const ctx = mapResultToContext(makeApi(), "ecg.npz", "http://localhost:8000");
+    expect(ctx.versions?.model_hash).toBe("abc");
+    expect(ctx.versions?.api_version).toBe("1.2.0");
+    expect(ctx.versions?.threshold_hash).toBe("def");
+  });
+
   it("preserves cnn/xgb/ensemble source divergence (primary uses ensemble)", () => {
     const ctx = mapResultToContext(makeApi(), "ecg.npz", "http://x");
     expect(ctx.primary.confidence).toBe(0.4); // ensemble

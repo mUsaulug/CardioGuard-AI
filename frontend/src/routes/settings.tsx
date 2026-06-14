@@ -60,7 +60,7 @@ function SettingsPage() {
   const testLlm = async () => {
     setTestingLlm(true);
     // Test with typed key (may differ from saved until Kaydet).
-    const result = await testOpenRouterConnection(key.trim() || getApiKey());
+    const result = await testOpenRouterConnection(backend.trim() || getBackendUrl(), key.trim() || getApiKey());
     setTestingLlm(false);
     if (result.ok) {
       toast.success(`OpenRouter OK — model: ${result.model}`);
@@ -74,7 +74,9 @@ function SettingsPage() {
       <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6">
         <h1 className="font-display text-2xl font-bold text-foreground">Ayarlar</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          API anahtarı yalnızca bu tarayıcıda (localStorage) saklanır.
+          Prod ortamda OpenRouter anahtarı sunucuda (<code className="text-xs">OPENROUTER_API_KEY</code>)
+          tutulur; tarayıcı doğrudan OpenRouter&apos;a bağlanmaz. Yerel geliştirmede isteğe bağlı
+          tarayıcı anahtarı kullanılabilir.
         </p>
 
         <div className="mt-6 space-y-4">
@@ -90,8 +92,9 @@ function SettingsPage() {
               className="mt-2 font-mono"
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              Anahtar yoksa asistan kural tabanlı modda çalışır. Anahtarı yazdıktan sonra alttaki{" "}
-              <span className="font-medium text-foreground">Kaydet</span> butonuna basmayı unutmayın.
+              Yerel geliştirme: anahtarı buraya yazın (backend proxy üzerinden iletilir). Prod: sunucu
+              ortam değişkeni yeterli. Anahtarı yazdıktan sonra{" "}
+              <span className="font-medium text-foreground">Kaydet</span> butonuna basın.
             </p>
           </Card>
 
@@ -116,7 +119,7 @@ function SettingsPage() {
               variant="outline"
               size="sm"
               className="mt-3 gap-2"
-              disabled={testingLlm || !key.trim()}
+              disabled={testingLlm}
               onClick={testLlm}
             >
               <PlugZap className="h-4 w-4" />
@@ -130,7 +133,7 @@ function SettingsPage() {
                 <Sparkles className="h-4 w-4 text-primary" /> Demo Modu
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                API anahtarı olsa bile kural tabanlı simülasyon yanıtlarını zorla.
+                EKG analizi canlı kalır; yalnızca sohbet yanıtları şablon/kural tabanlı olur.
               </p>
             </div>
             <Switch checked={demo} onCheckedChange={setDemo} />

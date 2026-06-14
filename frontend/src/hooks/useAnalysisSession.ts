@@ -23,12 +23,14 @@ import {
 import {
   OpenRouterError,
   RateLimitError,
+  fetchLlmAvailability,
   isClinicalAdviceRequest,
   looksLikeEmptyLlmRefusal,
   streamChat,
   templateAnswer,
 } from "@/lib/openrouter";
 import { debugLog } from "@/lib/sessionDebugLog";
+import { shouldUseMockAnalysis } from "@/lib/analysisMode";
 
 export const ANALYSIS_STEPS = [
   "EKG sinyali okunuyor...",
@@ -96,7 +98,10 @@ export function useAnalysisSession() {
       setAppState("results");
       setRestored(true);
     }
-    setLlmStatus(getApiKey() ? "active" : "offline");
+    const key = getApiKey();
+    fetchLlmAvailability(getBackendUrl(), key).then((ok) => {
+      setLlmStatus(ok ? "active" : "offline");
+    });
   }, []);
 
   const persist = useCallback(
@@ -131,14 +136,20 @@ export function useAnalysisSession() {
   );
 
   const runAnalysis = useCallback(
-    (file: File | null, fileName: string, opts: AnalyzeOptions, demo: boolean) => {
+    (file: File | null, fileName: string, opts: AnalyzeOptions, simulationRequest: boolean) => {
       setRestored(false);
       setAppState("analyzing");
       setStepIndex(0);
 
-      if (demo || !file) {
+      if (shouldUseMockAnalysis(file, simulationRequest)) {
         debugLog("analysis", "info", "Demo/simülasyon analizi başladı", { fileName });
         runMockPipeline(fileName, setStepIndex, (ctx) => finishAnalysis(ctx, true));
+        return;
+      }
+
+      if (!file) {
+        setAppState("welcome");
+        toast.error("Dosya seçilmedi");
         return;
       }
 
@@ -221,6 +232,7 @@ export function useAnalysisSession() {
       debugLog("ui", "info", "Kullanıcı mesajı", { preview: trimmed.slice(0, 120) });
 
       const apiKey = getApiKey();
+      const backendUrl = getBackendUrl();
       const demoForced = getDemoMode();
 
       const finalize = (content: string, source: MessageSource, status?: LlmStatus) => {
@@ -236,7 +248,8 @@ export function useAnalysisSession() {
         setIsResponding(false);
       };
 
-      if (!apiKey || demoForced || isDemo) {
+      const llmReady = await fetchLlmAvailability(backendUrl, apiKey);
+      if (!llmReady || demoForced || isDemo) {
         const answer = templateAnswer(trimmed, context);
         await new Promise((r) => setTimeout(r, 450));
         finalize(answer, "template", "offline");
@@ -256,7 +269,7 @@ export function useAnalysisSession() {
       let acc = "";
       try {
         setLlmStatus("active");
-        await streamChat(apiKey, trimmed, context, history, {
+        await streamChat(backendUrl, apiKey, trimmed, context, history, {
           signal: controller.signal,
           onProgress: setLlmProgress,
           onToken: (tok) => {
@@ -302,8 +315,10 @@ export function useAnalysisSession() {
   const elaborateWithLlm = useCallback(async () => {
     if (!context || isResponding) return;
     const apiKey = getApiKey();
-    if (!apiKey || getDemoMode() || isDemo) {
-      toast.error("LLM kullanılamıyor: API anahtarı yok veya demo modu açık.");
+    const backendUrl = getBackendUrl();
+    const llmReady = await fetchLlmAvailability(backendUrl, apiKey);
+    if (!llmReady || getDemoMode() || isDemo) {
+      toast.error("LLM kullanılamıyor: anahtar yok, sunucu yapılandırılmadı veya demo modu açık.");
       return;
     }
 
@@ -343,7 +358,7 @@ export function useAnalysisSession() {
     let acc = "";
     try {
       setLlmStatus("active");
-      await streamChat(apiKey, prompt, context, history, {
+      await streamChat(backendUrl, apiKey, prompt, context, history, {
         signal: controller.signal,
         onProgress: setLlmProgress,
         onToken: (tok) => {

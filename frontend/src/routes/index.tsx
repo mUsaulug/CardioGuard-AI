@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
@@ -22,7 +22,8 @@ import { EvidencePanel } from "@/components/evidence/EvidencePanel";
 import { ClinicalChatPanel } from "@/components/chat/ClinicalChatPanel";
 import { useAnalysisSession, ANALYSIS_STEPS } from "@/hooks/useAnalysisSession";
 import type { AnalyzeOptions } from "@/lib/types";
-import { getApiKey, getDemoMode } from "@/lib/storage";
+import { getApiKey, getDemoMode, getBackendUrl } from "@/lib/storage";
+import { fetchBackendStatus, type BackendStatus } from "@/lib/api/cardioguard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -69,7 +70,21 @@ function WelcomeView({
   const [fileName, setFileName] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<BackendStatus | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const status = await fetchBackendStatus(getBackendUrl());
+      if (!cancelled) setBackendStatus(status);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const backendOk = backendStatus?.ready || backendStatus?.healthy;
 
   const validate = (f: File): boolean => {
     if (!/\.(npy|npz)$/i.test(f.name)) {
@@ -91,6 +106,10 @@ function WelcomeView({
   };
 
   const analyze = () => {
+    if (backendOk === false) {
+      toast.error("Backend erişilemiyor — Ayarlar'dan URL kontrol edin");
+      return;
+    }
     if (!selectedFile || !fileName) {
       toast.error("Lütfen bir EKG dosyası seçin");
       return;
@@ -99,8 +118,11 @@ function WelcomeView({
       selectedFile,
       fileName,
       { explain, sanityCheck: sanity, ensemble },
-      getDemoMode(),
+      false,
     );
+    if (getDemoMode()) {
+      toast.info("Demo modu açık: EKG analizi canlı, sohbet yanıtları şablon/kural tabanlı.");
+    }
   };
 
   return (
@@ -183,7 +205,7 @@ function WelcomeView({
           </div>
 
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-            <Button onClick={analyze} className="flex-1 gap-2">
+            <Button onClick={analyze} className="flex-1 gap-2" disabled={backendOk === false}>
               <Activity className="h-4 w-4" /> EKG Analiz Et
             </Button>
             <Button onClick={onDemo} variant="outline" className="flex-1 gap-2">
@@ -195,9 +217,32 @@ function WelcomeView({
         <Card className="h-fit p-5">
           <p className="text-sm font-medium text-foreground">Sistem Durumu</p>
           <div className="mt-3 space-y-2.5 text-sm">
+            <StatusRow
+              ok={backendOk === true}
+              label={
+                backendStatus === null
+                  ? "Backend kontrol ediliyor…"
+                  : backendStatus.ready
+                    ? backendStatus.degraded
+                      ? "Backend hazır (kısıtlı mod)"
+                      : "Backend hazır"
+                    : backendStatus.healthy
+                      ? "Backend canlı (modeller yükleniyor)"
+                      : "Backend erişilemiyor"
+              }
+            />
             <StatusRow ok label="Demo verisi hazır" />
             <StatusRow ok={!!getApiKey()} label={getApiKey() ? "LLM API bağlı" : "LLM API yok (offline)"} />
-            <StatusRow ok label="Açıklama motoru aktif" />
+            <StatusRow
+              ok={backendStatus?.ready === true && !backendStatus.degraded}
+              label={
+                backendStatus?.ready && backendStatus.degraded
+                  ? "Açıklama motoru kısıtlı (degraded)"
+                  : backendStatus?.ready
+                    ? "Açıklama motoru aktif"
+                    : "Açıklama motoru bekleniyor"
+              }
+            />
           </div>
           <div className="mt-4 flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />

@@ -167,15 +167,20 @@ def analyze_class_distribution(
         "note": "NORM is derived, not trained"
     }
     
+    pathology_col = (
+        "superclass_pathologies"
+        if "superclass_pathologies" in train_df.columns
+        else "diagnostic_superclass"
+    )
+    label_lens = train_df[pathology_col].apply(len) if pathology_col in train_df.columns else pd.Series([0] * n_train)
+
     return {
         "n_train_samples": n_train,
         "class_distribution": class_counts,
         "multi_label_stats": {
-            "avg_labels_per_sample": train_df["diagnostic_superclass"].apply(len).mean(),
-            "samples_with_multiple_labels": (
-                train_df["diagnostic_superclass"].apply(len) > 1
-            ).sum()
-        }
+            "avg_labels_per_sample": float(label_lens.mean()),
+            "samples_with_multiple_labels": int((label_lens > 1).sum()),
+        },
     }
 
 
@@ -206,7 +211,7 @@ def analyze_labels(
     train_idx, val_idx, test_idx = get_standard_split(df_labeled)
     
     # Compute co-occurrence using derived logic
-    cooccur = compute_cooccurrence_derived(df_labeled, min_likelihood)
+    cooccur = compute_cooccurrence_derived(df_labeled)
     
     # Analyze class distribution (train only for pos_weight)
     class_dist = analyze_class_distribution(df_labeled, train_idx, scp_df, min_likelihood)

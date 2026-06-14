@@ -27,7 +27,7 @@ from src.pipeline.training.train_superclass_cnn import (
     SUPERCLASS_LABELS,
     filter_missing_files
 )
-from src.pipeline.train_superclass_xgb_ovr import load_xgb_ovr_models
+from src.pipeline.training.train_superclass_xgb_ovr import load_xgb_ovr_models
 from src.models.cnn import ECGCNNConfig
 
 

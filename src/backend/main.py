@@ -34,11 +34,22 @@ from datetime import datetime, timezone
 import numpy as np
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
+
+from src.config import get_ensemble_cnn_weight
+from src.backend.llm_proxy import (
+    FREE_MODEL_CHAIN,
+    allow_client_llm_key,
+    llm_available,
+    llm_proxy_enabled,
+    proxy_chat_completion,
+    server_key_configured,
+)
 
 
 # =============================================================================
@@ -49,6 +60,26 @@ RUNS_DIR = Path("reports/xai/runs")
 RUN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 CLIENT_LOG_DIR = Path("logs")
 CLIENT_LOG_FILE = CLIENT_LOG_DIR / "client-events.jsonl"
+
+_DEFAULT_CORS_ORIGINS = (
+    "http://localhost:3000,http://localhost:5173,http://localhost:8080,"
+    "http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:8080"
+)
+
+
+def _debug_endpoints_enabled() -> bool:
+    return os.getenv("ENABLE_DEBUG_ENDPOINTS", "0") == "1"
+
+
+def _resolve_cors_origins() -> tuple[list[str], bool]:
+    """Return (origins, allow_credentials). Wildcard disables credentials."""
+    raw = os.environ.get("CORS_ORIGINS", _DEFAULT_CORS_ORIGINS).split(",")
+    origins = [o.strip() for o in raw if o.strip()]
+    if "*" in origins:
+        if len(origins) == 1:
+            return ["*"], False
+        origins = [o for o in origins if o != "*"]
+    return origins, True
 
 
 # =============================================================================
@@ -160,10 +191,14 @@ class MILocalizationResponse(BaseModel):
     probabilities: Dict[str, float] = Field(default={}, description="Per-region probabilities")
     label_space: str = Field(default="ptbxl_derived_anatomical_v1")
     labels: List[str] = Field(default=["AMI", "ASMI", "ALMI", "IMI", "LMI"])
+    labels_tr: Dict[str, str] = Field(default={}, description="Turkish region labels")
     mapping_source: str = Field(default="src/data/mi_localization.py")
     mapping_fingerprint: str = Field(default="8ab274e06afa1be8")
     localization_head_type: str = Field(default="classification_5")
+    versions: Optional[VersionInfo] = Field(None, description="Model version metadata")
+    glossary: Dict[str, str] = Field(default={}, description="Turkish clinical glossary")
     xai: Optional[XAIInfo] = Field(None, description="XAI artifacts info")
+    latency_ms: Optional[float] = Field(None, description="Server-side inference latency in milliseconds")
 
 
 class HealthResponse(BaseModel):
@@ -177,6 +212,8 @@ class ReadyResponse(BaseModel):
     ready: bool
     models_loaded: Dict[str, bool]
     message: str
+    degraded: bool = False
+    degraded_models: List[str] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -200,6 +237,8 @@ class AppState:
         self.loaded = False
         self.xgb_data = None
         self.device = None
+        self.degraded = False
+        self.degraded_models: List[str] = []
     
     def load_models(
         self,
@@ -213,8 +252,14 @@ class AppState:
         import joblib
         from xgboost import XGBClassifier
         from src.utils.model_loader import load_model_safe
+        from src.utils.signal import load_superclass_norm_stats
         
         self.device = torch.device("cpu")
+
+        # Superclass normalization stats (required — must match CNN training)
+        mean, std = load_superclass_norm_stats()
+        print(f"Superclass normalization stats loaded: {len(mean)} leads")
+        _ = (mean, std)  # fail-closed validation only
         
         # Superclass (required)
         if superclass_checkpoint.exists():
@@ -272,6 +317,17 @@ class AppState:
             if scaler_path.exists():
                 scaler_obj = joblib.load(scaler_path)
                 self.scaler = scaler_obj
+
+        required_xgb = ["MI", "STTC", "CD", "HYP"]
+        missing_xgb = [cls for cls in required_xgb if cls not in xgb_models_dict]
+        if missing_xgb:
+            raise RuntimeError(
+                f"Required XGB OVR models missing: {missing_xgb} (dir={xgb_dir})"
+            )
+        if self.feature_schema is None:
+            raise RuntimeError(f"Required XGB feature schema not found: {xgb_dir / 'feature_schema.json'}")
+        if scaler_obj is None:
+            raise RuntimeError(f"Required XGB scaler not found: {xgb_dir / 'scaler.joblib'}")
         
         self.xgb_data = {
             "models": xgb_models_dict,
@@ -304,24 +360,49 @@ state = AppState()
 async def lifespan(app: FastAPI):
     """Load models on startup (fail-closed)."""
     from src.utils.checkpoint_validation import (
-        validate_all_checkpoints,
+        validate_checkpoint_task,
+        validate_localization_fingerprint,
         CheckpointMismatchError,
         MappingDriftError,
     )
 
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
+    state.degraded = False
+    state.degraded_models = []
+
+    required_checkpoints = [
+        (Path("checkpoints/ecgcnn_superclass.pt"), "superclass"),
+    ]
+    optional_checkpoints = [
+        (Path("checkpoints/ecgcnn.pt"), "binary"),
+        (Path("checkpoints/ecgcnn_localization.pt"), "mi_localization"),
+    ]
+
     print("Validating checkpoints...")
     try:
-        results = validate_all_checkpoints(strict=True)
+        for path, task in required_checkpoints:
+            validate_checkpoint_task(path, task, strict=True)
+            print(f"  {task}: required ✓")
+
+        for path, task in optional_checkpoints:
+            try:
+                validate_checkpoint_task(path, task, strict=True)
+                print(f"  {task}: optional ✓")
+            except FileNotFoundError:
+                state.degraded = True
+                state.degraded_models.append(task)
+                print(f"  {task}: missing (degraded mode)")
+
+        loc_path = Path("checkpoints/ecgcnn_localization.pt")
+        if loc_path.exists():
+            validate_localization_fingerprint(strict=True)
+
         print("Checkpoint validation passed!")
-        for task, result in (results or {}).items():
-            if isinstance(result, dict) and result.get("valid"):
-                print(f"  {task}: out_dim={result.get('out_dim')} ✓")
     except (CheckpointMismatchError, MappingDriftError) as e:
         raise RuntimeError(f"CRITICAL: Checkpoint validation failed: {e}")
     except FileNotFoundError as e:
-        print(f"Warning: Some checkpoints missing: {e}")
+        raise RuntimeError(f"CRITICAL: Required checkpoint missing: {e}")
 
     print("Loading models...")
     state.load_models()
@@ -336,12 +417,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+CORS_ORIGINS, CORS_ALLOW_CREDENTIALS = _resolve_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in CORS_ORIGINS],
-    allow_credentials=True,
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -351,50 +433,11 @@ app.add_middleware(
 # Utility Functions (NO XAI GENERATION)
 # =============================================================================
 
-def parse_ecg_file(file_content: bytes, filename: str) -> np.ndarray:
-    """Parse uploaded ECG file with temp cleanup."""
-    tmp_path = None
-    data = None
-    try:
-        with tempfile.NamedTemporaryFile(suffix=Path(filename).suffix, delete=False) as tmp:
-            tmp.write(file_content)
-            tmp_path = Path(tmp.name)
-        
-        if filename.endswith(".npz"):
-            data = np.load(tmp_path)
-            if "signal" in data:
-                signal = data["signal"].copy()  # Copy to release file handle
-            elif "X" in data:
-                signal = data["X"].copy()
-            else:
-                signal = data[list(data.keys())[0]].copy()
-            data.close()  # Explicitly close NPZ file handle
-        elif filename.endswith(".npy"):
-            signal = np.load(tmp_path)
-        else:
-            raise HTTPException(400, f"Unsupported file format: {filename}")
-    finally:
-        if data is not None:
-            try:
-                data.close()
-            except:
-                pass
-        if tmp_path and tmp_path.exists():
-            try:
-                tmp_path.unlink()
-            except:
-                pass  # Ignore if file still locked
-    
-    # Ensure (channels, timesteps) format
-    if signal.ndim == 1:
-        signal = signal.reshape(1, -1)
-    if signal.shape[0] != 12:
-        if signal.shape[1] == 12:
-            signal = signal.T
-        elif signal.shape[0] > signal.shape[1]:
-            signal = signal.T
-    
-    return signal.astype(np.float32)
+def parse_ecg_file(file_content: bytes, filename: str) -> Tuple[np.ndarray, Dict[str, Any]]:
+    """Parse and validate uploaded ECG file. Returns (signal, validation_meta)."""
+    from src.utils.signal_io import load_ecg_from_bytes
+
+    return load_ecg_from_bytes(file_content, filename, validate=True)
 
 
 def build_xai_info_from_manifest(run_id: str, run_dir: Path) -> Optional[XAIInfo]:
@@ -455,8 +498,64 @@ async def readiness_check():
     return ReadyResponse(
         ready=ready,
         models_loaded=models_status,
-        message="Ready" if ready else "Not ready",
+        message="Ready (degraded)" if ready and state.degraded else ("Ready" if ready else "Not ready"),
+        degraded=state.degraded,
+        degraded_models=list(state.degraded_models),
     )
+
+
+# =============================================================================
+# LLM proxy (OpenRouter — R3-05)
+# =============================================================================
+
+
+class LlmStatusResponse(BaseModel):
+    proxy_enabled: bool
+    server_key_configured: bool
+    allow_client_key: bool
+    available: bool
+    default_models: List[str]
+
+
+class LlmChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class LlmChatRequest(BaseModel):
+    model: str
+    messages: List[LlmChatMessage]
+    max_tokens: int = Field(default=600, ge=1, le=4096)
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
+    stream: bool = False
+
+
+@app.get("/api/llm/status", response_model=LlmStatusResponse)
+async def llm_status():
+    """Report whether LLM proxy can serve chat (server key or dev client key)."""
+    return LlmStatusResponse(
+        proxy_enabled=llm_proxy_enabled(),
+        server_key_configured=server_key_configured(),
+        allow_client_key=allow_client_llm_key(),
+        available=llm_available(),
+        default_models=list(FREE_MODEL_CHAIN),
+    )
+
+
+@app.post("/api/llm/chat")
+async def llm_chat(
+    request: LlmChatRequest,
+    x_openrouter_key: Optional[str] = Header(default=None, alias="X-OpenRouter-Key"),
+):
+    """Proxy chat completions to OpenRouter (stream or JSON)."""
+    body = {
+        "model": request.model,
+        "messages": [m.model_dump() for m in request.messages],
+        "max_tokens": request.max_tokens,
+        "temperature": request.temperature,
+        "stream": request.stream,
+    }
+    return await proxy_chat_completion(body, x_openrouter_key)
 
 
 # =============================================================================
@@ -475,6 +574,8 @@ class ClientLogEvent(BaseModel):
 @app.post("/debug/client-log")
 async def append_client_log(event: ClientLogEvent):
     """Append one frontend debug event to logs/client-events.jsonl."""
+    if not _debug_endpoints_enabled():
+        raise HTTPException(404, "Not found")
     CLIENT_LOG_DIR.mkdir(parents=True, exist_ok=True)
     line = json.dumps(event.model_dump(), ensure_ascii=False) + "\n"
     with open(CLIENT_LOG_FILE, "a", encoding="utf-8") as f:
@@ -485,6 +586,8 @@ async def append_client_log(event: ClientLogEvent):
 @app.get("/debug/client-log")
 async def read_client_log(tail: int = Query(50, ge=1, le=500)):
     """Return recent frontend debug events (for local QA / agent inspection)."""
+    if not _debug_endpoints_enabled():
+        raise HTTPException(404, "Not found")
     if not CLIENT_LOG_FILE.exists():
         return {"events": [], "count": 0, "file": str(CLIENT_LOG_FILE)}
     lines = [ln for ln in CLIENT_LOG_FILE.read_text(encoding="utf-8").splitlines() if ln.strip()]
@@ -541,10 +644,10 @@ async def serve_xai_artifact(run_id: str, file_path: str):
 async def predict_superclass(
     file: UploadFile = File(...),
     ensemble_weight: float = Query(
-        0.15,
+        default=get_ensemble_cnn_weight(),
         ge=0.0,
         le=1.0,
-        description="CNN weight in ensemble (XGB weight = 1 - this). Optimized default 0.15.",
+        description="CNN weight in ensemble (XGB weight = 1 - this). Default from thresholds artifact.",
     ),
     explain: bool = Query(False, description="Generate XAI artifacts"),
     sanity_check: bool = Query(False, description="Run XAI sanity checks"),
@@ -558,7 +661,7 @@ async def predict_superclass(
     """
     import uuid
 
-    from src.contracts.airesult_mapper import map_predict_output_to_airesult
+    from src.contracts.airesult_mapper import derive_input_meta, map_predict_output_to_airesult
     from src.contracts.api_mapper import (
         build_glossary_subset,
         map_explanation_info,
@@ -575,7 +678,9 @@ async def predict_superclass(
         raise HTTPException(413, "File too large (max 10MB)")
     
     try:
-        signal = parse_ecg_file(content, file.filename)
+        signal, input_meta = await run_in_threadpool(parse_ecg_file, content, file.filename)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(400, f"Could not parse file: {e}")
     
@@ -596,7 +701,8 @@ async def predict_superclass(
 
     _t0 = _time.perf_counter()
     try:
-        result = pipeline_predict(
+        result = await run_in_threadpool(
+            pipeline_predict,
             signal=signal,
             cnn_model=state.superclass_model,
             xgb_data=state.xgb_data,
@@ -610,6 +716,7 @@ async def predict_superclass(
             run_dir=run_dir,
             sample_id=sample_id,
             save_plot=save_plot,
+            feature_schema=state.feature_schema,
         )
     except Exception as e:
         import traceback
@@ -650,6 +757,7 @@ async def predict_superclass(
             case_id=str(uuid.uuid4()),
             sample_id=sample_id,
             run_dir=run_dir,
+            input_meta=derive_input_meta(signal_path=Path(file.filename) if file.filename else None, validation_meta=input_meta),
         )
 
     return SuperclassPredictionResponse(
@@ -703,7 +811,7 @@ async def predict_mi_localization(
     from src.pipeline.inference.run_inference_localization import predict as pipeline_predict_localization
     from src.xai.reporting import generate_run_id
     from src.data.mi_localization import MI_LOCALIZATION_REGIONS
-    from src.config import MI_LOCALIZATION_FINGERPRINT
+    from src.config import MI_LOCALIZATION_FINGERPRINT, MI_LOCALIZATION_LABELS_TR, GLOSSARY
     
     if state.localization_model is None:
         raise HTTPException(503, "MI localization model not loaded")
@@ -713,7 +821,9 @@ async def predict_mi_localization(
         raise HTTPException(413, "File too large (max 10MB)")
     
     try:
-        signal = parse_ecg_file(content, file.filename)
+        signal, _input_meta = await run_in_threadpool(parse_ecg_file, content, file.filename)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(400, f"Could not parse file: {e}")
     
@@ -726,8 +836,11 @@ async def predict_mi_localization(
         run_dir = RUNS_DIR / run_id
     
     # PIPELINE DOES ALL WORK
+    import time as _time
+    _t0 = _time.perf_counter()
     try:
-        result = pipeline_predict_localization(
+        result = await run_in_threadpool(
+            pipeline_predict_localization,
             signal=signal,
             model=state.localization_model,
             device=state.device,
@@ -738,7 +851,8 @@ async def predict_mi_localization(
         )
     except Exception as e:
         raise HTTPException(500, f"Prediction failed: {e}")
-    
+    latency_ms = round((_time.perf_counter() - _t0) * 1000.0, 1)
+
     xai_info = None
     if explain and run_dir and run_dir.exists():
         xai_info = build_xai_info_from_manifest(run_id, run_dir)
@@ -747,12 +861,20 @@ async def predict_mi_localization(
         mi_detected=result.get("mi_detected", False),
         regions=result.get("regions", []),
         probabilities=result.get("probabilities", {}),
+        labels_tr=MI_LOCALIZATION_LABELS_TR,
         label_space="ptbxl_derived_anatomical_v1",
         labels=MI_LOCALIZATION_REGIONS,
         mapping_source="src/data/mi_localization.py",
         mapping_fingerprint=MI_LOCALIZATION_FINGERPRINT,
         localization_head_type="classification_5",
+        versions=VersionInfo(
+            model_hash=state.model_hashes.get("localization", ""),
+            threshold_hash=state.threshold_hash,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        ),
+        glossary={k: GLOSSARY.get(k, k) for k in ("MI", "NORM")},
         xai=xai_info,
+        latency_ms=latency_ms,
     )
 
 
@@ -765,8 +887,24 @@ _frontend_dist = Path("frontend/dist/client")
 if not _frontend_dist.exists():
     _frontend_dist = Path("frontend/dist")
 _assets_dir = _frontend_dist / "assets"
+_index_html = _frontend_dist / "index.html"
 if _assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="frontend-assets")
+
+if _index_html.exists():
+
+    @app.get("/")
+    async def serve_frontend_index():
+        return FileResponse(_index_html)
+
+    @app.get("/{spa_path:path}")
+    async def serve_frontend_spa(spa_path: str):
+        """SPA fallback for client routes (exclude API paths)."""
+        if spa_path.startswith(
+            ("predict", "health", "ready", "runs", "debug", "assets", "api", "docs", "openapi.json", "redoc")
+        ):
+            raise HTTPException(404, "Not found")
+        return FileResponse(_index_html)
 
 
 # =============================================================================

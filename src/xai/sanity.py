@@ -126,6 +126,15 @@ class XAISanityChecker:
             random_explanation = explanation_func(self.model, input_with_grad)
         finally:
             self.model.eval()
+
+        if random_explanation is None:
+            return {
+                "test": "Model Parameter Randomization",
+                "status": "SKIP",
+                "similarity": None,
+                "threshold": 0.3,
+                "note": "Explanation function returned None after randomization.",
+            }
         
         # Restore original weights for subsequent tests
         self.model.load_state_dict(self.original_weights)
@@ -354,9 +363,15 @@ class XAISanityChecker:
         
         Spearman is rank-based, robust to scale differences.
         """
+        if exp1 is None or exp2 is None:
+            return 0.0
+
         # Flatten both explanations
-        flat1 = np.asarray(exp1).flatten()
-        flat2 = np.asarray(exp2).flatten()
+        flat1 = np.asarray(exp1, dtype=np.float64).flatten()
+        flat2 = np.asarray(exp2, dtype=np.float64).flatten()
+
+        if flat1.size == 0 or flat2.size == 0:
+            return 0.0
         
         # Handle edge cases
         if len(flat1) != len(flat2):

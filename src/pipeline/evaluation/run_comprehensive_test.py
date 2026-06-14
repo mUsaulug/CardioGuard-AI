@@ -20,14 +20,14 @@ from src.config import get_default_config
 from src.data.loader import load_ptbxl_metadata, load_scp_statements
 from src.data.labels_superclass import add_superclass_labels_derived
 from src.data.mi_localization import add_mi_localization_labels
-from src.pipeline.run_inference_superclass import (
+from src.pipeline.inference.run_inference_superclass import (
     load_cnn_model as load_cnn_superclass,
     load_xgb_models as load_xgb_superclass,
     load_thresholds as load_thresholds_superclass,
     load_localization_model,
     predict as predict_superclass
 )
-from src.pipeline.run_inference_binary import (
+from src.pipeline.inference.run_inference_binary import (
     load_cnn_model as load_cnn_binary,
     load_ensemble_alpha
 )

@@ -212,9 +212,13 @@ def extract_sanity(explanation_out: Optional[Dict[str, Any]]) -> Optional[Dict[s
     
     overall = sanity_check.get("overall", {})
     
-    # Normalize status
+    # Normalize status (producer uses RELIABLE/ACCEPTABLE/UNRELIABLE)
     status = overall.get("status", "SKIPPED")
-    if status not in ["PASS", "FAIL", "SKIPPED"]:
+    if status in ("RELIABLE", "ACCEPTABLE"):
+        status = "PASS"
+    elif status == "UNRELIABLE":
+        status = "FAIL"
+    elif status not in ["PASS", "FAIL", "SKIPPED"]:
         # Try to derive from passed/total
         passed = overall.get("passed_checks", 0)
         total = overall.get("total_checks", 0)

@@ -1,4 +1,8 @@
 import type { AnalyzeOptions } from "@/lib/types";
+import { parseSuperclassApiResponse } from "@/lib/api/superclassSchema";
+
+/** Max wait for ML inference (XAI can be slow). */
+const INFERENCE_TIMEOUT_MS = 120_000;
 
 export interface ExplanationInfo {
   narrative: string;
@@ -81,6 +85,7 @@ export async function predictSuperclass(
   const res = await fetch(`${base}/predict/superclass?${params.toString()}`, {
     method: "POST",
     body: form,
+    signal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -94,16 +99,52 @@ export async function predictSuperclass(
     throw new Error(`Backend hata (${res.status}): ${detail}`);
   }
 
-  return res.json() as Promise<SuperclassApiResponse>;
+  const data = await res.json();
+  try {
+    return parseSuperclassApiResponse(data) as SuperclassApiResponse;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "Geçersiz API yanıtı";
+    throw new Error(`Backend yanıtı doğrulanamadı: ${detail}`);
+  }
+}
+
+export interface BackendStatus {
+  healthy: boolean;
+  ready: boolean;
+  degraded: boolean;
+}
+
+export async function fetchBackendStatus(backendUrl: string): Promise<BackendStatus> {
+  const base = normalizeBaseUrl(backendUrl);
+  try {
+    const readyRes = await fetch(`${base}/ready`, {
+      method: "GET",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (readyRes.ok) {
+      const data = (await readyRes.json()) as { ready?: boolean; degraded?: boolean };
+      return {
+        healthy: true,
+        ready: data.ready === true,
+        degraded: Boolean(data.degraded),
+      };
+    }
+  } catch {
+    // fall through to /health
+  }
+
+  try {
+    const healthRes = await fetch(`${base}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(8000),
+    });
+    return { healthy: healthRes.ok, ready: false, degraded: false };
+  } catch {
+    return { healthy: false, ready: false, degraded: false };
+  }
 }
 
 export async function testBackendConnection(backendUrl: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${normalizeBaseUrl(backendUrl)}/health`, {
-      method: "GET",
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  const status = await fetchBackendStatus(backendUrl);
+  return status.ready || status.healthy;
 }

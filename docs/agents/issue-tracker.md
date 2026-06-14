@@ -1,6 +1,9 @@
-# Issue tracker: GitHub
+# Issue tracker: GitHub (ertelendi)
 
-Issues for this repo live in GitHub Issues on `mUsaulug/CardioGuard-AI`. Use the `gh` CLI for all operations — run from inside the repo and `gh` picks up the remote automatically.
+> **Not (2026-06-09):** GitHub remote henüz kesin değil (şirket vs kişisel karışıklığı).  
+> Issue'lar şimdilik **yerel iş paketlerinde**: `docs/agents/work_packages/`
+
+Issues for this repo will live in GitHub Issues on `mUsaulug/CardioGuard-AI` when remote is configured. Use the `gh` CLI for all operations — run from inside the repo and `gh` picks up the remote automatically.
 
 ## Conventions
 

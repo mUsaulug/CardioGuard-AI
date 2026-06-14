@@ -81,6 +81,28 @@ class ExplanationResult:
         return result
 
 
+def _resolve_sanity_gradcam_target(
+    primary_label: str,
+    gradcam_res: Dict[str, Any],
+    ensemble_probs: Dict[str, float],
+) -> tuple[str, Optional[np.ndarray]]:
+    """Pick pathology class + heatmap for sanity (NORM has no Grad-CAM head)."""
+    if primary_label != "NORM" and primary_label in gradcam_res:
+        return primary_label, gradcam_res[primary_label]
+
+    if gradcam_res:
+        best = max(gradcam_res.keys(), key=lambda c: ensemble_probs.get(c, 0.0))
+        return best, gradcam_res[best]
+
+    if primary_label != "NORM" and primary_label in SUPERCLASS_LABELS:
+        return primary_label, None
+
+    best = max(SUPERCLASS_LABELS, key=lambda c: ensemble_probs.get(c, 0.0))
+    if ensemble_probs.get(best, 0.0) <= 0.0:
+        return primary_label, None
+    return best, None
+
+
 def explain(
     predict_result: PredictResult,
     cnn_model: nn.Module,
@@ -147,19 +169,33 @@ def explain(
 
     sanity_result: Optional[Dict[str, Any]] = None
     if sanity_check:
-        class_idx = (
-            SUPERCLASS_LABELS.index(primary_label) if primary_label != "NORM" else 0
+        sanity_class, sanity_heatmap = _resolve_sanity_gradcam_target(
+            primary_label, gradcam_res, predict_result.ensemble_probs
         )
+        class_idx = SUPERCLASS_LABELS.index(sanity_class)
+
+        if sanity_heatmap is None:
+            gcam = GradCAM(cnn_model, target_layer)
+            try:
+                sanity_heatmap = gcam.generate(
+                    predict_result.signal_tensor, class_index=class_idx
+                )
+            finally:
+                gcam.cleanup()
 
         def explanation_func(m: nn.Module, inp: torch.Tensor) -> np.ndarray:
             gcam = GradCAM(m, m.get_cam_layer())
-            return gcam.generate(inp, class_index=class_idx)
+            try:
+                return gcam.generate(inp, class_index=class_idx)
+            finally:
+                gcam.cleanup()
 
         checker = XAISanityChecker(cnn_model)
         sanity_result = checker.run_checks(
             predict_result.signal_tensor,
-            gradcam_res.get(primary_label) if gradcam_res else None,
+            sanity_heatmap,
             explanation_func,
+            class_index=class_idx,
         )
 
     # If sanity flags the explanation as unreliable, the coherence claim cannot
@@ -280,19 +316,16 @@ def _write_manifest(
             "mime": "text/markdown",
         })
 
-    manifest = {
-        "run_id": run_dir.name,
-        "created_at": datetime.now(timezone.utc).isoformat() + "Z",
-        "task": "multiclass",
-        "sample_id": sample_id,
-        "artifacts": artifacts,
-        "sanity": sanity_result.get("overall") if sanity_result else None,
-        "highlights": explanation_result.get("top_windows") if explanation_result else None,
-    }
+    from src.xai.manifest_io import write_run_manifest
 
-    manifest_path = run_dir / "manifest.json"
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2)
+    write_run_manifest(
+        run_dir=run_dir,
+        sample_id=sample_id,
+        task="multiclass",
+        artifacts=artifacts,
+        sanity=sanity_result.get("overall") if sanity_result else None,
+        highlights=explanation_result.get("top_windows") if explanation_result else None,
+    )
 
     return artifacts
 

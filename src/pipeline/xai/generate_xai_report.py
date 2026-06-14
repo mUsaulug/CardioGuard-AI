@@ -32,11 +32,11 @@ import torch
 
 from src.models.cnn import ECGCNNConfig, ECGCNN, MultiTaskECGCNN
 from src.pipeline.training.train_superclass_cnn import MultiLabelECGCNN, SUPERCLASS_LABELS
-from src.pipeline.run_inference_superclass import (
+from src.pipeline.inference.run_inference_superclass import (
     load_cnn_model as load_superclass_cnn_model, load_xgb_models, load_thresholds, load_ecg_signal,
     DEFAULT_CNN_CHECKPOINT, DEFAULT_XGB_DIR, DEFAULT_THRESHOLDS
 )
-from src.utils.signal import ensure_channel_first
+from src.config import get_ensemble_cnn_weight
 from src.utils.checkpoints import load_checkpoint_state_dict
 from src.data.mi_localization import MI_LOCALIZATION_REGIONS
 from src.xai.gradcam import GradCAM, generate_relevant_gradcam, smooth_gradcam
@@ -402,7 +402,7 @@ def process_single_sample(
         gradcam_dict,
         shap_result,
         probs_dict,
-        ensemble_weight=0.5,
+        ensemble_weight=get_ensemble_cnn_weight(),
         primary_label=pred_class,
         runnerup_label=runnerup,
     )

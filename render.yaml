@@ -1,0 +1,22 @@
+# Render blueprint — CardioGuard-AI ML API (Docker).
+# Frontend deploys separately on Vercel (frontend/vercel.json).
+# Dashboard secrets: OPENROUTER_API_KEY (LLM proxy).
+services:
+  - type: web
+    name: cardioguard-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: ALLOW_CLIENT_LLM_KEY
+        value: "0"
+      - key: ENABLE_DEBUG_ENDPOINTS
+        value: "0"
+      - key: LLM_PROXY_ENABLED
+        value: "1"
+      - key: OPENROUTER_API_KEY
+        sync: false

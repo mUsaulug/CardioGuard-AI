@@ -1,8 +1,15 @@
 import type { AnalysisContext, ChatMessage } from "./types";
 import { DISCLAIMER, PATHOLOGY_LABELS_TR } from "./glossary";
 import { debugLog } from "./sessionDebugLog";
+import { normalizeBaseUrl } from "./api/cardioguard";
 
-const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+function chatEndpoint(backendUrl: string): string {
+  return `${normalizeBaseUrl(backendUrl)}/api/llm/chat`;
+}
+
+function llmStatusEndpoint(backendUrl: string): string {
+  return `${normalizeBaseUrl(backendUrl)}/api/llm/status`;
+}
 
 /**
  * Ücretsiz modeller — tek API key ile hepsi kullanılabilir.
@@ -44,13 +51,34 @@ function freeModelChain(): string[] {
   return [...FREE_MODEL_CHAIN];
 }
 
-function openRouterHeaders(apiKey: string): Record<string, string> {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
-    "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "",
-    "X-Title": "CardioGuard-AI",
-  };
+function llmProxyHeaders(apiKey?: string): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (apiKey?.trim()) headers["X-OpenRouter-Key"] = apiKey.trim();
+  return headers;
+}
+
+/** Whether LLM chat is available via backend proxy (server key or dev client key). */
+export async function fetchLlmAvailability(
+  backendUrl: string,
+  apiKey?: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch(llmStatusEndpoint(backendUrl), {
+      method: "GET",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return Boolean(apiKey?.trim());
+    const data = (await res.json()) as {
+      available?: boolean;
+      server_key_configured?: boolean;
+      allow_client_key?: boolean;
+    };
+    if (data.server_key_configured) return true;
+    if (data.allow_client_key && apiKey?.trim()) return true;
+    return Boolean(data.available);
+  } catch {
+    return Boolean(apiKey?.trim());
+  }
 }
 
 function createModelAbort(parent?: AbortSignal): { signal: AbortSignal; cleanup: () => void } {
@@ -85,8 +113,11 @@ function isTimeoutError(err: unknown): boolean {
 async function readErrorSnippet(res: Response): Promise<string> {
   try {
     const text = await res.text();
-    const parsed = JSON.parse(text) as { error?: { message?: string } };
-    return parsed.error?.message || text.slice(0, 200);
+    const parsed = JSON.parse(text) as {
+      error?: { message?: string };
+      detail?: string;
+    };
+    return parsed.error?.message || parsed.detail || text.slice(0, 200);
   } catch {
     return res.statusText;
   }
@@ -181,15 +212,16 @@ async function readStreamBody(
 }
 
 async function syncCompletion(
+  backendUrl: string,
   apiKey: string,
   model: string,
   messages: { role: string; content: string }[],
   signal?: AbortSignal,
 ): Promise<string> {
-  const res = await fetch(ENDPOINT, {
+  const res = await fetch(chatEndpoint(backendUrl), {
     method: "POST",
     signal,
-    headers: openRouterHeaders(apiKey),
+    headers: llmProxyHeaders(apiKey),
     body: JSON.stringify({
       model,
       messages,
@@ -215,6 +247,7 @@ interface StreamCallbacks {
 }
 
 export async function streamChat(
+  backendUrl: string,
   apiKey: string,
   userMessage: string,
   ctx: AnalysisContext,
@@ -223,6 +256,7 @@ export async function streamChat(
 ): Promise<void> {
   const messages = buildMessages(ctx, userMessage, history);
   const chain = freeModelChain();
+  const endpoint = chatEndpoint(backendUrl);
 
   let lastStatus = 0;
   let lastDetail = "";
@@ -244,10 +278,10 @@ export async function streamChat(
     const t0 = performance.now();
 
     try {
-      const res = await fetch(ENDPOINT, {
+      const res = await fetch(endpoint, {
         method: "POST",
         signal,
-        headers: openRouterHeaders(apiKey),
+        headers: llmProxyHeaders(apiKey),
         body: JSON.stringify({
           model,
           messages,
@@ -282,7 +316,7 @@ export async function streamChat(
       }
 
       cb.onProgress?.(`Akış boş — ${model} sync deneniyor…`);
-      const synced = await syncCompletion(apiKey, model, messages, signal);
+      const synced = await syncCompletion(backendUrl, apiKey, model, messages, signal);
       if (synced) {
         cb.onToken(synced);
         debugLog("llm", "info", "LLM sync başarılı", {
@@ -431,22 +465,28 @@ export function templateAnswer(userMessage: string, ctx: AnalysisContext): strin
   )}). Daha spesifik bir soru sorabilirsiniz: lokalizasyon, güvenilirlik, STTC, XAI veya bir terim (MI, HYP...).${tail}`;
 }
 
-/** OpenRouter key + ücretsiz model zincirini test et. */
-export async function testOpenRouterConnection(apiKey: string): Promise<{
+/** OpenRouter via backend proxy — tests free model chain. */
+export async function testOpenRouterConnection(
+  backendUrl: string,
+  apiKey: string,
+): Promise<{
   ok: boolean;
   model?: string;
   detail?: string;
 }> {
-  if (!apiKey.trim()) return { ok: false, detail: "API anahtarı boş" };
+  if (!apiKey.trim() && !(await fetchLlmAvailability(backendUrl))) {
+    return { ok: false, detail: "API anahtarı boş ve sunucuda OPENROUTER_API_KEY yok" };
+  }
 
+  const endpoint = chatEndpoint(backendUrl);
   let lastDetail = "";
   for (const model of freeModelChain()) {
     const { signal, cleanup } = createModelAbort(undefined);
     try {
-      const res = await fetch(ENDPOINT, {
+      const res = await fetch(endpoint, {
         method: "POST",
         signal,
-        headers: openRouterHeaders(apiKey.trim()),
+        headers: llmProxyHeaders(apiKey.trim() || undefined),
         body: JSON.stringify({
           model,
           messages: [{ role: "user", content: "Merhaba" }],

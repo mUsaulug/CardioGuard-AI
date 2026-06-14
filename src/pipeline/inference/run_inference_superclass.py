@@ -22,10 +22,11 @@ import joblib
 from sklearn.isotonic import IsotonicRegression  # Import needed for instance check
 
 from src.models.cnn import ECGCNNConfig, ECGBackbone, ECGCNN
-from src.pipeline.training.train_superclass_cnn import MultiLabelECGCNN
 from src.data.mi_localization import MI_LOCALIZATION_REGIONS
-from src.config import SUPERCLASS_LABELS, MI_LOCALIZATION_LABELS
+from src.config import SUPERCLASS_LABELS, MI_LOCALIZATION_LABELS, get_ensemble_cnn_weight
 from src.pipeline.inference.consistency_guard import check_consistency, ConsistencyResult
+from src.utils.model_loader import validate_feature_schema
+from src.utils.signal import apply_superclass_normalization, validate_ecg_signal
 from src.xai.pipeline import PredictResult, ExplanationResult, explain as xai_explain
 
 
@@ -64,16 +65,11 @@ def get_primary_label(probs: Dict[str, float], thresholds: Dict[str, float]) -> 
     return "NORM", norm_prob
 
 
-def load_cnn_model(checkpoint_path: Path, device: torch.device) -> MultiLabelECGCNN:
-    """Load trained multi-label CNN."""
-    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    
-    config = ECGCNNConfig()
-    model = MultiLabelECGCNN(config)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval()
-    model.to(device)
-    
+def load_cnn_model(checkpoint_path: Path, device: torch.device) -> nn.Module:
+    """Load superclass CNN via shared safe loader (same as API startup)."""
+    from src.utils.model_loader import load_model_safe
+
+    model, _meta = load_model_safe(checkpoint_path, "superclass", str(device))
     return model
 
 
@@ -139,22 +135,10 @@ def load_thresholds(thresholds_path: Path) -> Dict[str, float]:
 
 
 def load_ecg_signal(input_path: Path) -> np.ndarray:
-    """Load ECG signal from various formats."""
-    if input_path.suffix == ".npz":
-        data = np.load(input_path)
-        if "signal" in data:
-            signal = data["signal"]
-        elif "X" in data:
-            signal = data["X"]
-        else:
-            # Assume first array
-            signal = data[list(data.keys())[0]]
-    elif input_path.suffix == ".npy":
-        signal = np.load(input_path)
-    else:
-        raise ValueError(f"Unsupported format: {input_path.suffix}")
-    
-    return signal
+    """Load ECG signal from various formats (CLI)."""
+    from src.utils.signal_io import load_ecg_array_from_path
+
+    return load_ecg_array_from_path(input_path)
 
 
 def ensure_channel_first(signal: np.ndarray) -> np.ndarray:
@@ -183,15 +167,21 @@ def core_predict(
     device: torch.device,
     localization_model: Optional[nn.Module] = None,
     binary_model: Optional[nn.Module] = None,
-    ensemble_weight: float = 0.5,
+    ensemble_weight: Optional[float] = None,
     localization_threshold: float = 0.5,
+    feature_schema: Optional[Dict[str, Any]] = None,
 ) -> PredictResult:
     """
     Pure inference: CNN + XGB ensemble, labels, consistency guard, localization.
 
     No XAI, plotting, or manifest writing.
     """
-    signal = ensure_channel_first(signal)
+    if ensemble_weight is None:
+        ensemble_weight = get_ensemble_cnn_weight()
+    signal, _input_meta = validate_ecg_signal(signal)
+    # Localization CNN is trained on raw wfdb amplitudes (channel-first only).
+    signal_for_localization = np.asarray(signal, dtype=np.float32).copy()
+    signal = apply_superclass_normalization(signal)
 
     with torch.no_grad():
         signal_tensor = torch.as_tensor(signal, dtype=torch.float32).unsqueeze(0).to(device)
@@ -207,6 +197,9 @@ def core_predict(
 
     xgb_probs_dict: Dict[str, float] = {}
     if xgb_data.get("models") and embeddings is not None:
+        if feature_schema is not None:
+            validate_feature_schema(embeddings.shape, feature_schema)
+
         xgb_embeddings = embeddings
         if xgb_data.get("scaler") is not None:
             xgb_embeddings = xgb_data["scaler"].transform(embeddings)
@@ -263,7 +256,10 @@ def core_predict(
     localization_result = None
     if localization_model and "MI" in predicted_labels:
         with torch.no_grad():
-            loc_logits = localization_model(signal_tensor)
+            loc_tensor = torch.as_tensor(
+                signal_for_localization, dtype=torch.float32
+            ).unsqueeze(0).to(device)
+            loc_logits = localization_model(loc_tensor)
             loc_probs = torch.sigmoid(loc_logits).cpu().numpy()[0]
 
         localization_result = {
@@ -317,19 +313,20 @@ def generate_explanation(
 
 def predict(
     signal: np.ndarray,
-    cnn_model: MultiLabelECGCNN,
+    cnn_model: nn.Module,
     xgb_data: Dict[str, Any],
     thresholds: Dict[str, float],
     localization_model: Optional[nn.Module],
     device: torch.device,
     binary_model: Optional[nn.Module] = None,
-    ensemble_weight: float = 0.5,
+    ensemble_weight: Optional[float] = None,
     localization_threshold: float = 0.5,
     explain: bool = False,
     sanity_check: bool = False,
     save_plot: Optional[Path] = None,
     run_dir: Optional[Path] = None,
     sample_id: str = "sample",
+    feature_schema: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Run multi-label prediction (backward-compatible wrapper).
@@ -346,6 +343,7 @@ def predict(
         binary_model=binary_model,
         ensemble_weight=ensemble_weight,
         localization_threshold=localization_threshold,
+        feature_schema=feature_schema,
     )
 
     explanation_result = None
@@ -390,6 +388,7 @@ def predict(
         "run_id": run_dir.name if run_dir else None,
         "run_dir": str(run_dir) if run_dir else None,
         "consistency": consistency_result.to_dict() if consistency_result else None,
+        "ensemble_weight": predict_result.ensemble_weight,
     }
 
 
@@ -404,14 +403,15 @@ def main():
     parser.add_argument("--xgb-dir", type=Path, default=DEFAULT_XGB_DIR)
     parser.add_argument("--thresholds", type=Path, default=DEFAULT_THRESHOLDS)
     parser.add_argument("--localization-checkpoint", type=Path, default=DEFAULT_LOCALIZATION_CHECKPOINT)
-    parser.add_argument("--ensemble-weight", type=float, default=0.5,
-                        help="Weight for CNN (1-weight for XGB)")
+    parser.add_argument("--ensemble-weight", type=float, default=None,
+                        help="CNN weight in ensemble (default: from thresholds artifact)")
     parser.add_argument("--explain", action="store_true", help="Generate Unified XAI explanation")
     parser.add_argument("--sanity-check", action="store_true", help="Run XAI sanity checks")
     parser.add_argument("--save-plot", type=Path, default=None, help="Path to save explanation plot")
     parser.add_argument("--device", type=str, default=None)
     
     args = parser.parse_args()
+    ensemble_w = args.ensemble_weight if args.ensemble_weight is not None else get_ensemble_cnn_weight()
     
     # Device
     if args.device:
@@ -441,7 +441,7 @@ def main():
     print("Running inference...")
     result = predict(
         signal, cnn_model, xgb_data, thresholds, localization_model, device,
-        ensemble_weight=args.ensemble_weight,
+        ensemble_weight=ensemble_w,
         explain=args.explain,
         sanity_check=args.sanity_check,
         save_plot=args.save_plot,

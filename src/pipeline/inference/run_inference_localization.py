@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timezone
 
 import numpy as np
 import torch
@@ -21,6 +20,7 @@ from torch import nn
 
 from src.models.cnn import ECGCNNConfig, ECGCNN
 from src.data.mi_localization import MI_LOCALIZATION_REGIONS
+from src.utils.signal import validate_ecg_signal
 
 
 def predict(
@@ -47,10 +47,9 @@ def predict(
     Returns:
         Prediction result dict
     """
-    # Ensure correct format
-    signal = _ensure_channel_first(signal)
-    
-    # Run prediction
+    # Match training: validated channel-first raw amplitudes (no superclass z-score).
+    signal, _ = validate_ecg_signal(signal)
+
     with torch.no_grad():
         signal_tensor = torch.as_tensor(signal, dtype=torch.float32).unsqueeze(0).to(device)
         logits = model(signal_tensor)
@@ -189,18 +188,9 @@ def _write_manifest(
     (run_dir / "visuals").mkdir(exist_ok=True)
     (run_dir / "text").mkdir(exist_ok=True)
     
-    artifacts = []
-    
-    # Discover visuals
-    visuals_dir = run_dir / "visuals"
-    for png in visuals_dir.glob("*.png"):
-        artifacts.append({
-            "type": "report_png",
-            "path": f"visuals/{png.name}",
-            "mime": "image/png"
-        })
-    
-    # Write narrative
+    from src.xai.manifest_io import discover_visual_artifacts, write_run_manifest
+
+    artifacts = discover_visual_artifacts(run_dir)
     narrative = f"""# MI Localization XAI
 
 ## Detected Regions
@@ -220,18 +210,12 @@ def _write_manifest(
         "path": f"text/{sample_id}__narrative.md",
         "mime": "text/markdown"
     })
-    
-    # Build manifest
-    manifest = {
-        "run_id": run_dir.name,
-        "created_at": datetime.now(timezone.utc).isoformat() + "Z",
-        "task": "localization",
-        "sample_id": sample_id,
-        "artifacts": artifacts,
-        "sanity": None,
-        "highlights": None,
-    }
-    
-    manifest_path = run_dir / "manifest.json"
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2)
+
+    write_run_manifest(
+        run_dir=run_dir,
+        sample_id=sample_id,
+        task="localization",
+        artifacts=artifacts,
+        sanity=None,
+        highlights=None,
+    )

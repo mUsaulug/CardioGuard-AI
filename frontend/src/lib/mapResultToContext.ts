@@ -55,5 +55,10 @@ export function mapResultToContext(
     runId: api.xai?.run_id ?? null,
     latencyMs: api.latency_ms ?? null,
     glossary: api.glossary ?? {},
+    versions: {
+      model_hash: api.versions.model_hash,
+      threshold_hash: api.versions.threshold_hash,
+      api_version: api.versions.api_version,
+    },
   };
 }
