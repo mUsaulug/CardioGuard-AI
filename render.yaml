@@ -13,7 +13,7 @@ services:
       - key: PORT
         value: "8000"
       - key: ALLOW_CLIENT_LLM_KEY
-        value: "0"
+        value: "1"
       - key: ENABLE_DEBUG_ENDPOINTS
         value: "0"
       - key: LLM_PROXY_ENABLED

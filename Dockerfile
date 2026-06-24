@@ -18,7 +18,7 @@ COPY features_out/superclass_feature_config.json features_out/superclass_feature
 
 ENV OMP_NUM_THREADS=1
 ENV KMP_DUPLICATE_LIB_OK=TRUE
-ENV ALLOW_CLIENT_LLM_KEY=0
+ENV ALLOW_CLIENT_LLM_KEY=1
 ENV ENABLE_DEBUG_ENDPOINTS=0
 
 EXPOSE 8000
