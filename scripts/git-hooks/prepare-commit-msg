@@ -1,4 +1,0 @@
-#!/bin/sh
-# Strip Co-authored-by trailers so bot accounts don't appear as GitHub contributors.
-# Enable: git config core.hooksPath scripts/git-hooks
-sed -i '' '/^Co-[Aa]uthored-[Bb]y:/d' "$1" 2>/dev/null || sed -i '/^Co-[Aa]uthored-[Bb]y:/d' "$1"
