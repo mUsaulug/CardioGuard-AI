@@ -22,3 +22,12 @@ reports/xai/runs/
 .coverage
 htmlcov/
 .idea/
+
+# Sunum / dokuman dosyalari (GitHub'a gitmeyecek)
+*.key
+*.pptx
+*.docx
+~$*
+*.pages
+*.numbers
+*.pdf
